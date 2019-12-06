@@ -6,10 +6,7 @@ import datetime
 
 from dateutil.parser import parse as parse_date
 
-import ckan.lib.navl.dictization_functions
-import ckan.logic as logic
 import ckan.plugins as p
-from ckan.logic import side_effect_free
 
 import ckanext.xloader.schema
 import interfaces as xloader_interfaces
@@ -26,12 +23,9 @@ except ImportError:
 get_queue = rq_jobs.get_queue
 
 log = logging.getLogger(__name__)
-try:
-    config = p.toolkit.config
-except AttributeError:
-    from pylons import config
-_get_or_bust = logic.get_or_bust
-_validate = ckan.lib.navl.dictization_functions.validate
+config = p.toolkit.config
+_get_or_bust = p.toolkit.get_or_bust
+_validate = p.toolkit.navl_validate
 
 
 def xloader_submit(context, data_dict):
@@ -67,7 +61,7 @@ def xloader_submit(context, data_dict):
         resource_dict = p.toolkit.get_action('resource_show')(context, {
             'id': res_id,
         })
-    except logic.NotFound:
+    except p.toolkit.ObjectNotFound:
         return False
 
     site_url = config['ckan.site_url']
@@ -138,7 +132,7 @@ def xloader_submit(context, data_dict):
                 return False
 
         task['id'] = existing_task['id']
-    except logic.NotFound:
+    except p.toolkit.ObjectNotFound:
         pass
 
     context['ignore_auth'] = True
@@ -264,7 +258,7 @@ def xloader_hook(context, data_dict):
         for plugin in p.PluginImplementations(xloader_interfaces.IXloader):
             plugin.after_upload(context, resource_dict, dataset_dict)
 
-        logic.get_action('resource_create_default_resource_views')(
+        p.toolkit.get_action('resource_create_default_resource_views')(
             context,
             {
                 'resource': resource_dict,
@@ -303,7 +297,7 @@ def xloader_hook(context, data_dict):
             context, {'resource_id': res_id})
 
 
-@side_effect_free
+@p.toolkit.side_effect_free
 def xloader_status(context, data_dict):
     ''' Get the status of a ckanext-xloader job for a certain resource.
 
