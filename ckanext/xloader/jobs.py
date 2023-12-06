@@ -453,6 +453,16 @@ def update_resource(resource, patch_only=False):
     context = get_xloader_user_context()
     context['ignore_auth'] = True
     context['auth_user_obj'] = None
+    # (canada fork only): calling resource_patch or resource_update will fire off
+    # ckanext-validation again. Queuing the Resource for Validation, and then queuing
+    # it again for Xloader. This is very bad as it will do another loop of Validation
+    # and Xloader. It is not an endless loop as Xloader will stop because of file
+    # hashes being the same. But then the Xloader report won't really be accurate
+    # as it will only contain the "file hash did not change" message.
+    #
+    # We add a value to the Context here to be used in
+    # ckanext-validation after_update to prevent this loop.
+    context['_canada_is_doing_xloader'] = True
     get_action(action)(context, resource)
 
 
