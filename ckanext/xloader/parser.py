@@ -26,7 +26,7 @@ class CanadaCSVDialect(Dialect):
 
     _name = 'csv'
 
-    def __init__(self, static_dialect=None):
+    def __init__(self, static_dialect):
         super(CanadaCSVDialect, self).__init__()
         for k in static_dialect:
             setattr(self, k, static_dialect[k])
