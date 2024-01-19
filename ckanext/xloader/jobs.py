@@ -163,6 +163,9 @@ def xloader_data_into_datastore_(input, job_dict):
             tmp_file.name,
             resource_id=resource['id'],
             mimetype=resource.get('format'),
+            # (canada fork only): adds in dialect argument to pass static dialect
+            dialect=resource.get('validation_options', {})
+                .get('dialect', {}).get(resource.get('format', '').lower(), None),
             logger=logger)
         loader.calculate_record_count(
             resource_id=resource['id'], logger=logger)
@@ -183,6 +186,9 @@ def xloader_data_into_datastore_(input, job_dict):
             loader.load_table(tmp_file.name,
                               resource_id=resource['id'],
                               mimetype=resource.get('format'),
+                              # (canada fork only): adds in dialect argument to pass static dialect
+                              dialect=resource.get('validation_options', {})
+                                .get('dialect', {}).get(resource.get('format', '').lower(), None),
                               logger=logger)
         except JobError as e:
             logger.error('Error during tabulator load: %s', e)
