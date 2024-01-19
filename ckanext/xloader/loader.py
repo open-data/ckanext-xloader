@@ -9,6 +9,8 @@ import os.path
 import tempfile
 from decimal import Decimal
 
+from json import dumps
+
 import psycopg2
 from chardet.universaldetector import UniversalDetector
 from six.moves import zip
@@ -18,7 +20,7 @@ from unidecode import unidecode
 import ckan.plugins as p
 
 from .job_exceptions import FileCouldNotBeLoadedError, LoaderError
-from .parser import CSV_SAMPLE_LINES, TypeConverter
+from .parser import CSV_SAMPLE_LINES, TypeConverter, CanadaCSVParser
 from .utils import datastore_resource_exists, headers_guess, type_guess
 
 from ckan.plugins.toolkit import config
@@ -52,12 +54,12 @@ class CanadaStream(Stream):
         """
         if self.static_dialect:
             if self.logger:
-                self.logger.info('Using Static Dialect for %s: %r', self.__format, self.static_dialect)
+                self.logger.info('Using Static Dialect for %s: %s', self.__format, dumps(self.static_dialect))
             return self.static_dialect
         if self.__parser:
             if self.logger:
-                self.logger.info('Using Tabulator Dialect for %s: %r', self.__format,
-                                 getattr(self.__parser, 'dialect', {}))
+                self.logger.info('Using Tabulator Dialect for %s: %s', self.__format,
+                                 dumps(getattr(self.__parser, 'dialect', {})))
             return getattr(self.__parser, 'dialect', {})
         return None
 
@@ -86,14 +88,18 @@ class UnknownEncodingStream(object):
         try:
 
             if (self.decoding_result and self.decoding_result['confidence'] and self.decoding_result['confidence'] > 0.7):
-                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger, format=self.file_format, encoding=self.decoding_result['encoding'],
-                                     ** self.stream_args).__enter__()
+                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                           format=self.file_format, encoding=self.decoding_result['encoding'],
+                                           custom_parsers={'csv': CanadaCSVParser}, ** self.stream_args).__enter__()
             else:
-                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger, format=self.file_format, ** self.stream_args).__enter__()
+                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                           format=self.file_format, custom_parsers={'csv': CanadaCSVParser},
+                                           ** self.stream_args).__enter__()
 
         except (EncodingError, UnicodeDecodeError):
-            self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger, format=self.file_format,
-                                 encoding=SINGLE_BYTE_ENCODING, **self.stream_args).__enter__()
+            self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                       format=self.file_format, encoding=SINGLE_BYTE_ENCODING,
+                                       custom_parsers={'csv': CanadaCSVParser}, **self.stream_args).__enter__()
         return self.stream
 
     def __exit__(self, *args):

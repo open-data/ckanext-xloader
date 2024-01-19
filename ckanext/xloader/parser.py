@@ -4,13 +4,63 @@ from decimal import Decimal, InvalidOperation
 import re
 import six
 
+from json import dumps
+
 from ckan.plugins.toolkit import asbool
 from dateutil.parser import isoparser, parser, ParserError
 
 from ckan.plugins.toolkit import config
 
+from tabulator.parsers.csv import CSVParser
+
+try:
+    from unicodecsv import Dialect
+except ImportError:
+    from csv import Dialect
+
 CSV_SAMPLE_LINES = 1000
 DATE_REGEX = re.compile(r'''^\d{1,4}[-/.\s]\S+[-/.\s]\S+''')
+
+
+class CanadaCSVDialect(Dialect):
+
+    _name = 'csv'
+
+    def __init__(self, static_dialect=None):
+        super(CanadaCSVDialect, self).__init__()
+        for k in static_dialect:
+            setattr(self, k, static_dialect[k])
+
+
+class CanadaCSVParser(CSVParser):
+
+    options = [
+        'static_dialect',
+        'logger',
+    ]
+
+    def __init__(self, loader, *args, **kwargs):
+        super(CanadaCSVParser, self).__init__(loader, *args, **kwargs)
+        self.static_dialect = kwargs.get('static_dialect', None)
+        self.logger = kwargs.get('logger', None)
+
+    @property
+    def dialect(self):
+        if self.static_dialect:
+            if self.logger:
+                self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
+            return self.static_dialect
+        return super(CanadaCSVParser, self).dialect()
+
+    def __prepare_dialect(self, stream):
+        sample, dialect = super(CanadaCSVParser, self).__prepare_dialect(stream)
+        if self.static_dialect:
+            if self.logger:
+                self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
+            return sample, CanadaCSVDialect(self.static_dialect)
+        if self.logger:
+            self.logger.info('Using Tabulator Dialect for csv: %s', dumps(dialect))
+        return sample, dialect
 
 
 class TypeConverter:
