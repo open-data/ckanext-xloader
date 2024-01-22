@@ -12,24 +12,41 @@ from dateutil.parser import isoparser, parser, ParserError
 from ckan.plugins.toolkit import config
 
 from tabulator.parsers.csv import CSVParser
+from tabulator.config import CSV_SAMPLE_LINES
 
-try:
-    from unicodecsv import Dialect
-except ImportError:
-    from csv import Dialect
+from csv import Dialect
+from _csv import Dialect as _Dialect
 
-CSV_SAMPLE_LINES = 1000
 DATE_REGEX = re.compile(r'''^\d{1,4}[-/.\s]\S+[-/.\s]\S+''')
 
 
 class CanadaCSVDialect(Dialect):
 
     _name = 'csv'
+    _valid = False
+    # placeholders
+    delimiter = None
+    quotechar = None
+    escapechar = None
+    doublequote = None
+    skipinitialspace = None
+    lineterminator = None
+    quoting = None
 
     def __init__(self, static_dialect):
-        super(CanadaCSVDialect, self).__init__()
         for k in static_dialect:
-            setattr(self, k, static_dialect[k])
+            if isinstance(static_dialect[k], six.text_type):
+                # must be strings and not unicode
+                setattr(self, k, static_dialect[k].encode('utf-8'))
+            else:
+                setattr(self, k, static_dialect[k])
+        if self.__class__ != Dialect and self.__class__ != CanadaCSVDialect:
+            self._valid = True
+        self._validate()
+
+    def _validate(self):
+        # will raise an exception if it is not a valid Dialect
+        _Dialect(self)
 
 
 class CanadaCSVParser(CSVParser):
@@ -43,6 +60,11 @@ class CanadaCSVParser(CSVParser):
         super(CanadaCSVParser, self).__init__(loader, *args, **kwargs)
         self.static_dialect = kwargs.get('static_dialect', None)
         self.logger = kwargs.get('logger', None)
+        # we only want to mangle the parent method if a static dialect
+        # is supplied. Otherwise, we want the parent method to be called as normal.
+        if self.static_dialect:
+            self._CSVParser__prepare_dialect = self.__mangle__prepare_dialect
+
 
     @property
     def dialect(self):
@@ -52,15 +74,24 @@ class CanadaCSVParser(CSVParser):
             return self.static_dialect
         return super(CanadaCSVParser, self).dialect()
 
-    def __prepare_dialect(self, stream):
-        sample, dialect = super(CanadaCSVParser, self).__prepare_dialect(stream)
-        if self.static_dialect:
-            if self.logger:
-                self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
-            return sample, CanadaCSVDialect(self.static_dialect)
+    def __mangle__prepare_dialect(self, stream):
+
+        # Get sample
+        # Copied from tabulator.pasrers.csv
+        # Needed because we cannot call parent private method while mangling.
+        sample = []
+        while True:
+            try:
+                sample.append(next(stream))
+            except StopIteration:
+                break
+            if len(sample) >= CSV_SAMPLE_LINES:
+                break
+
         if self.logger:
-            self.logger.info('Using Tabulator Dialect for csv: %s', dumps(dialect))
-        return sample, dialect
+            self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
+
+        return sample, CanadaCSVDialect(self.static_dialect)
 
 
 class TypeConverter:

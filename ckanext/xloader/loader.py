@@ -122,16 +122,21 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, logge
 
     decoding_result = detect_encoding(csv_filepath)
     logger.info("load_csv: Decoded encoding: %s", decoding_result)
+    has_logged_dialect = False
     # Determine the header row
     try:
         file_format = os.path.splitext(csv_filepath)[1].strip('.')
-        with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect, logger=logger) as stream:
+        with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
+                                   logger=(logger if not has_logged_dialect else None)) as stream:
             header_offset, headers = headers_guess(stream.sample)
+            has_logged_dialect = True
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
-            with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect, logger=logger) as stream:
+            with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
+                                       logger=(logger if not has_logged_dialect else None)) as stream:
                 header_offset, headers = headers_guess(stream.sample)
+                has_logged_dialect = True
         except TabulatorException as e:
             raise LoaderError('Tabulator error: {}'.format(e))
     except Exception as e:
@@ -164,8 +169,10 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, logge
         save_args = {'target': f_write.name, 'format': 'csv', 'encoding': 'utf-8', 'delimiter': delimiter}
         try:
             with UnknownEncodingStream(csv_filepath, file_format, decoding_result,
-                                       skip_rows=skip_rows, dialect=dialect, logger=logger) as stream:
+                                       skip_rows=skip_rows, dialect=dialect,
+                                       logger=(logger if not has_logged_dialect else None)) as stream:
                 stream.save(**save_args)
+                has_logged_dialect = True
         except (EncodingError, UnicodeDecodeError):
             with Stream(csv_filepath, format=file_format, encoding=SINGLE_BYTE_ENCODING,
                         skip_rows=skip_rows) as stream:
@@ -331,17 +338,22 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, l
     logger.info('Determining column names and types')
     decoding_result = detect_encoding(table_filepath)
     logger.info("load_table: Decoded encoding: %s", decoding_result)
+    has_logged_dialect = False
     try:
         file_format = os.path.splitext(table_filepath)[1].strip('.')
         with UnknownEncodingStream(table_filepath, file_format, decoding_result,
-                                   post_parse=[TypeConverter().convert_types], dialect=dialect, logger=logger) as stream:
+                                   post_parse=[TypeConverter().convert_types], dialect=dialect,
+                                   logger=(logger if not has_logged_dialect else None)) as stream:
             header_offset, headers = headers_guess(stream.sample)
+            has_logged_dialect = True
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
             with UnknownEncodingStream(table_filepath, file_format, decoding_result,
-                                       post_parse=[TypeConverter().convert_types], dialect=dialect, logger=logger) as stream:
+                                       post_parse=[TypeConverter().convert_types], dialect=dialect,
+                                       logger=(logger if not has_logged_dialect else None)) as stream:
                 header_offset, headers = headers_guess(stream.sample)
+                has_logged_dialect = True
         except TabulatorException as e:
             raise LoaderError('Tabulator error: {}'.format(e))
     except Exception as e:
@@ -382,7 +394,9 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, l
 
     with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                skip_rows=skip_rows,
-                               post_parse=[type_converter.convert_types], dialect=dialect, logger=logger) as stream:
+                               post_parse=[type_converter.convert_types], dialect=dialect,
+                               logger=(logger if not has_logged_dialect else None)) as stream:
+        has_logged_dialect = True
         def row_iterator():
             for row in stream:
                 data_row = {}
