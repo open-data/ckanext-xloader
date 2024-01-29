@@ -4,8 +4,6 @@ from decimal import Decimal, InvalidOperation
 import re
 import six
 
-from json import dumps
-
 from ckan.plugins.toolkit import asbool
 from dateutil.parser import isoparser, parser, ParserError
 
@@ -65,12 +63,17 @@ class CanadaCSVParser(CSVParser):
         if self.static_dialect:
             self._CSVParser__prepare_dialect = self.__mangle__prepare_dialect
 
+    def _get_log_for_dialect(self, dialect):
+        log_dialect = ''
+        for _k in dialect:
+            log_dialect += '\n\t%s: %r' % (_k, dialect[_k])
+        return log_dialect
 
     @property
     def dialect(self):
         if self.static_dialect:
             if self.logger:
-                self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
+                self.logger.info('Using Static Dialect for csv: %s', self._get_log_for_dialect(self.static_dialect))
             return self.static_dialect
         return super(CanadaCSVParser, self).dialect()
 
@@ -89,7 +92,7 @@ class CanadaCSVParser(CSVParser):
                 break
 
         if self.logger:
-            self.logger.info('Using Static Dialect for csv: %s', dumps(self.static_dialect))
+            self.logger.info('Using Static Dialect for csv: %s', self._get_log_for_dialect(self.static_dialect))
 
         return sample, CanadaCSVDialect(self.static_dialect)
 

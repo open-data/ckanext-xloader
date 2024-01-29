@@ -170,12 +170,16 @@ def xloader_data_into_datastore_(input, job_dict):
         return static_validation_options
 
     def direct_load():
+        static_options = _get_static_validation_options()
         fields = loader.load_csv(
             tmp_file.name,
             resource_id=resource['id'],
             mimetype=resource.get('format'),
             # (canada fork only): adds in dialect argument to pass static dialect
-            dialect=_get_static_validation_options().get('dialect', {})
+            dialect=static_options.get('dialect', {})
+                .get(resource.get('format', '').lower(), None),
+            # (canada fork only): adds in encoding argument to pass static encoding
+            encoding=static_options.get('encoding', {})
                 .get(resource.get('format', '').lower(), None),
             logger=logger)
         loader.calculate_record_count(
@@ -193,12 +197,16 @@ def xloader_data_into_datastore_(input, job_dict):
         logger.info('File Hash updated for resource: %s', resource['hash'])
 
     def tabulator_load():
+        static_options = _get_static_validation_options()
         try:
             loader.load_table(tmp_file.name,
                               resource_id=resource['id'],
                               mimetype=resource.get('format'),
                               # (canada fork only): adds in dialect argument to pass static dialect
-                              dialect=_get_static_validation_options().get('dialect', {})
+                              dialect=static_options.get('dialect', {})
+                                .get(resource.get('format', '').lower(), None),
+                              # (canada fork only): adds in encoding argument to pass static encoding
+                              encoding=static_options.get('encoding', {})
                                 .get(resource.get('format', '').lower(), None),
                               logger=logger)
         except JobError as e:
