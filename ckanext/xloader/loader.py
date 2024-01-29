@@ -42,12 +42,6 @@ class CanadaStream(Stream):
         self.static_dialect = kwargs.get('static_dialect', None)
         self.logger = kwargs.get('logger', None)
 
-    def _get_log_for_dialect(self, dialect):
-        log_dialect = ''
-        for _k in dialect:
-            log_dialect += '\n\t%s: %r' % (_k, dialect[_k])
-        return log_dialect
-
     @property
     def dialect(self):
         """Dialect (if available)
@@ -58,12 +52,12 @@ class CanadaStream(Stream):
         """
         if self.static_dialect:
             if self.logger:
-                self.logger.info('Using Static Dialect for %s: %s', self.__format, self._get_log_for_dialect(self.static_dialect))
+                self.logger.info('Using Static Dialect for %s: %r', self.__format, self.static_dialect)
             return self.static_dialect
         if self.__parser:
             if self.logger:
-                self.logger.info('Using Tabulator Dialect for %s: %s', self.__format,
-                                 self._get_log_for_dialect(getattr(self.__parser, 'dialect', {})))
+                self.logger.info('Using Tabulator Dialect for %s: %r', self.__format,
+                                 getattr(self.__parser, 'dialect', {}))
             return getattr(self.__parser, 'dialect', {})
         return None
 
