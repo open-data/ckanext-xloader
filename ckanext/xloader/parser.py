@@ -69,7 +69,7 @@ class CanadaCSVParser(CSVParser):
             if self.logger:
                 self.logger.info('Using Static Dialect for csv: %r', self.static_dialect)
             return self.static_dialect
-        return super(CanadaCSVParser, self).dialect()
+        return super(CanadaCSVParser, self).dialect
 
     def __mangle__prepare_dialect(self, stream):
 
