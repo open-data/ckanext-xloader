@@ -176,7 +176,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
     try:
         file_format = os.path.splitext(csv_filepath)[1].strip('.')
         with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
-                                   force_encoding=(True if encoding else False),
+                                   force_encoding=bool(encoding),
                                    logger=(logger if not has_logged_dialect else None)) as stream:
             header_offset, headers = headers_guess(stream.sample)
             has_logged_dialect = True
@@ -184,7 +184,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
         try:
             file_format = mimetype.lower().split('/')[-1]
             with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
-                                       force_encoding=(True if encoding else False),
+                                       force_encoding=bool(encoding),
                                        logger=(logger if not has_logged_dialect else None)) as stream:
                 header_offset, headers = headers_guess(stream.sample)
                 has_logged_dialect = True
@@ -221,7 +221,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
         try:
             with UnknownEncodingStream(csv_filepath, file_format, decoding_result,
                                        skip_rows=skip_rows, dialect=dialect,
-                                       force_encoding=(True if encoding else False),
+                                       force_encoding=bool(encoding),
                                        logger=(logger if not has_logged_dialect else None)) as stream:
                 stream.save(**save_args)
                 has_logged_dialect = True
@@ -420,7 +420,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
         file_format = os.path.splitext(table_filepath)[1].strip('.')
         with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                    post_parse=[TypeConverter().convert_types], dialect=dialect,
-                                   force_encoding=(True if encoding else False),
+                                   force_encoding=bool(encoding),
                                    logger=(logger if not has_logged_dialect else None)) as stream:
             header_offset, headers = headers_guess(stream.sample)
             has_logged_dialect = True
@@ -429,7 +429,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
             file_format = mimetype.lower().split('/')[-1]
             with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                        post_parse=[TypeConverter().convert_types], dialect=dialect,
-                                       force_encoding=(True if encoding else False),
+                                       force_encoding=bool(encoding),
                                        logger=(logger if not has_logged_dialect else None)) as stream:
                 header_offset, headers = headers_guess(stream.sample)
                 has_logged_dialect = True
@@ -475,7 +475,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
     with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                skip_rows=skip_rows,
                                post_parse=[type_converter.convert_types], dialect=dialect,
-                               force_encoding=(True if encoding else False),
+                               force_encoding=bool(encoding),
                                logger=(logger if not has_logged_dialect else None)) as stream:
         has_logged_dialect = True
         def row_iterator():

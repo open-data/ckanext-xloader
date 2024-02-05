@@ -160,26 +160,29 @@ def xloader_data_into_datastore_(input, job_dict):
 
     # (canada fork only): use custom ckanext.validaion.static_validation_options
     #                     to set static dialect and encoding for goodtables/frictionless/tabulator
+    #                     or use the Resource's validation_options if they exist.
     # TODO: upstream contribution??
-    def _get_static_validation_options():
-        static_validation_options = {}
+    def _get_validation_options():
+        validation_options = {}
         static_validation_options = config.get(
             u'ckanext.validation.static_validation_options')
         if static_validation_options:
-            static_validation_options = json.loads(static_validation_options)
-        return static_validation_options
+            validation_options = json.loads(static_validation_options)
+        elif resource.get('validation_options', None):
+            validation_options = json.loads(resource.get('validation_options'))
+        return validation_options
 
     def direct_load():
-        static_options = _get_static_validation_options()
+        validation_options = _get_validation_options()
         fields = loader.load_csv(
             tmp_file.name,
             resource_id=resource['id'],
             mimetype=resource.get('format'),
-            # (canada fork only): adds in dialect argument to pass static dialect
-            dialect=static_options.get('dialect', {})
+            # (canada fork only): adds in dialect argument to pass static/resource dialect
+            dialect=validation_options.get('dialect', {})
                 .get(resource.get('format', '').lower(), None),
-            # (canada fork only): adds in encoding argument to pass static encoding
-            encoding=static_options.get('encoding', None),
+            # (canada fork only): adds in encoding argument to pass static/resource encoding
+            encoding=validation_options.get('encoding', None),
             logger=logger)
         loader.calculate_record_count(
             resource_id=resource['id'], logger=logger)
@@ -196,16 +199,16 @@ def xloader_data_into_datastore_(input, job_dict):
         logger.info('File Hash updated for resource: %s', resource['hash'])
 
     def tabulator_load():
-        static_options = _get_static_validation_options()
+        validation_options = _get_validation_options()
         try:
             loader.load_table(tmp_file.name,
                               resource_id=resource['id'],
                               mimetype=resource.get('format'),
-                              # (canada fork only): adds in dialect argument to pass static dialect
-                              dialect=static_options.get('dialect', {})
+                              # (canada fork only): adds in dialect argument to pass static/resource dialect
+                              dialect=validation_options.get('dialect', {})
                                 .get(resource.get('format', '').lower(), None),
-                              # (canada fork only): adds in encoding argument to pass static encoding
-                              encoding=static_options.get('encoding', None),
+                              # (canada fork only): adds in encoding argument to pass static/resource encoding
+                              encoding=validation_options.get('encoding', None),
                               logger=logger)
         except JobError as e:
             logger.error('Error during tabulator load: %s', e)
