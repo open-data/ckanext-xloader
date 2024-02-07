@@ -158,7 +158,7 @@ def xloader_data_into_datastore_(input, job_dict):
     logger.info('File hash: %s', file_hash)
     resource['hash'] = file_hash
 
-    # (canada fork only): use custom ckanext.validaion.static_validation_options
+    # (canada fork only): use custom ckanext.validation.static_validation_options
     #                     to set static dialect and encoding for goodtables/frictionless/tabulator
     #                     or use the Resource's validation_options if they exist.
     # TODO: upstream contribution??
