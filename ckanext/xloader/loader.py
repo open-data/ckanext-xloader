@@ -161,7 +161,8 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', logger=None):
     # e.g. duplicate names
     # (canada fork only): not worrrying about dupes as that is handled in ckanext-validation
 
-    # (canada fork only): remove underscores from front of headers as it is not supported in psql/datastore
+    # (canada fork only): remove underscores from front of headers as it is not supported in datastore
+    #                     see: ckanext.datastore.helpers.is_valid_field_name
     for i, header in enumerate(headers):
         if header.startswith('_'):
             headers[i] = header.lstrip('_')
@@ -417,7 +418,8 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', logger=None):
     # e.g. duplicate names
     # (canada fork only): not worrrying about dupes as that is handled in ckanext-validation
 
-    # (canada fork only): remove underscores from front of headers as it is not supported in psql/datastore
+    # (canada fork only): remove underscores from front of headers as it is not supported in datastore
+    #                     see: ckanext.datastore.helpers.is_valid_field_name
     for i, header in enumerate(headers):
         if header.startswith('_'):
             headers[i] = header.lstrip('_')
