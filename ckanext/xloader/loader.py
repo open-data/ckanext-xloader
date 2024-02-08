@@ -159,6 +159,12 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', logger=None):
 
     # TODO worry about csv header name problems
     # e.g. duplicate names
+    # (canada fork only): not worrrying about dupes as that is handled in ckanext-validation
+
+    # (canada fork only): remove underscores from front of headers as it is not supported in psql/datastore
+    for i, header in enumerate(headers):
+        if header.startswith('_'):
+            headers[i] = header.lstrip('_')
 
     # encoding (and line ending?)- use chardet
     # It is easier to reencode it as UTF8 than convert the name of the encoding
@@ -406,6 +412,15 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', logger=None):
 
     headers = [header.strip()[:MAX_COLUMN_LENGTH] for header in headers if header.strip()]
     type_converter = TypeConverter(types=types)
+
+    # TODO worry about csv header name problems
+    # e.g. duplicate names
+    # (canada fork only): not worrrying about dupes as that is handled in ckanext-validation
+
+    # (canada fork only): remove underscores from front of headers as it is not supported in psql/datastore
+    for i, header in enumerate(headers):
+        if header.startswith('_'):
+            headers[i] = header.lstrip('_')
 
     with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                skip_rows=skip_rows,
