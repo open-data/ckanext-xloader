@@ -54,12 +54,7 @@ class CanadaStream(Stream):
             if self.logger:
                 self.logger.info('Using Static Dialect for %s: %r', self.__format, self.static_dialect)
             return self.static_dialect
-        if self.__parser:
-            if self.logger:
-                self.logger.info('Using Tabulator Dialect for %s: %r', self.__format,
-                                 getattr(self.__parser, 'dialect', {}))
-            return getattr(self.__parser, 'dialect', {})
-        return None
+        return super(CanadaStream, self).dialect
 
 
 class UnknownEncodingStream(object):
