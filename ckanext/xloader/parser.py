@@ -33,7 +33,7 @@ class CanadaCSVDialect(Dialect):
 
     def __init__(self, static_dialect):
         for k in static_dialect:
-            if isinstance(static_dialect[k], six.text_type):
+            if six.PY2 and isinstance(static_dialect[k], six.text_type):
                 # must be strings and not unicode
                 setattr(self, k, static_dialect[k].encode('utf-8'))
             else:
