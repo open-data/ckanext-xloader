@@ -13,17 +13,28 @@ import psycopg2
 from chardet.universaldetector import UniversalDetector
 from six.moves import zip
 from tabulator import config as tabulator_config, EncodingError, Stream, TabulatorException
+from tabulator.config import CSV_SAMPLE_LINES
 from unidecode import unidecode
 
 import ckan.plugins as p
 
 from .job_exceptions import FileCouldNotBeLoadedError, LoaderError
-from .parser import CSV_SAMPLE_LINES, TypeConverter, CanadaCSVParser
+from .parser import TypeConverter
 from .utils import datastore_resource_exists, headers_guess, type_guess
 
 from ckan.plugins.toolkit import config
 
 import ckanext.datastore.backend.postgres as datastore_db
+
+try:
+    from ckanext.canada.tabulator import (
+        CanadaStream as TabulatorStream,
+        CanadaCSVParser as TabulatorCSVParser
+    )
+except ImportError:
+    from tabulator import Stream as TabulatorStream
+    from tabulator.parsers.csv import CSVParser as TabulatorCSVParser
+
 
 get_write_engine = datastore_db.get_write_engine
 create_indexes = datastore_db.create_indexes
@@ -33,28 +44,6 @@ MAX_COLUMN_LENGTH = 63
 tabulator_config.CSV_SAMPLE_LINES = CSV_SAMPLE_LINES
 
 SINGLE_BYTE_ENCODING = 'cp1252'
-
-
-class CanadaStream(Stream):
-
-    def __init__(self, source, *args, **kwargs):
-        super(CanadaStream, self).__init__(source, *args, **kwargs)
-        self.static_dialect = kwargs.get('static_dialect', None)
-        self.logger = kwargs.get('logger', None)
-
-    @property
-    def dialect(self):
-        """Dialect (if available)
-
-        # Returns
-            dict/None: dialect
-
-        """
-        if self.static_dialect:
-            if self.logger:
-                self.logger.info('Using Static Dialect for %s: %r', self.__format, self.static_dialect)
-            return self.static_dialect
-        return super(CanadaStream, self).dialect
 
 
 class UnknownEncodingStream(object):
@@ -83,20 +72,41 @@ class UnknownEncodingStream(object):
         try:
 
             if (self.decoding_result and self.decoding_result['confidence'] and self.decoding_result['confidence'] > 0.7):
-                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                           format=self.file_format, encoding=self.decoding_result['encoding'],
-                                           custom_parsers={'csv': CanadaCSVParser}, ** self.stream_args).__enter__()
+                self.stream = TabulatorStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                              format=self.file_format, encoding=self.decoding_result['encoding'],
+                                              custom_parsers={'csv': TabulatorCSVParser}, ** self.stream_args).__enter__()
             else:
-                self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                           format=self.file_format, custom_parsers={'csv': CanadaCSVParser},
-                                           ** self.stream_args).__enter__()
+                self.stream = TabulatorStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                              format=self.file_format, custom_parsers={'csv': TabulatorCSVParser},
+                                              ** self.stream_args).__enter__()
 
         except (EncodingError, UnicodeDecodeError):
             if self.force_encoding:
                 raise EncodingError('File must be encoded with: %s' % self.decoding_result['encoding'])
-            self.stream = CanadaStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                       format=self.file_format, encoding=SINGLE_BYTE_ENCODING,
-                                       custom_parsers={'csv': CanadaCSVParser}, **self.stream_args).__enter__()
+            self.stream = TabulatorStream(self.filepath, static_dialect=self.dialect, logger=self.logger,
+                                          format=self.file_format, encoding=SINGLE_BYTE_ENCODING,
+                                          custom_parsers={'csv': TabulatorCSVParser}, **self.stream_args).__enter__()
+
+        # (canada fork only): check stream dialect with passed dialect
+        if self.dialect and self.stream.dialect:
+            if self.stream.dialect['delimiter'] != self.dialect['delimiter']:
+                # translations are in Canada plugin
+                raise TabulatorException(p.toolkit._("File is using delimeter {stream_delimeter} instead of {static_delimeter}").format(
+                    stream_delimeter=self.stream.dialect['delimiter'],
+                    static_delimeter=self.dialect['delimiter']))
+
+            if self.stream.dialect['quoteChar'] != self.dialect['quotechar']:
+                # translations are in Canada plugin
+                raise TabulatorException(p.toolkit._("File is using quoting character {stream_quote_char} instead of {static_quote_char}").format(
+                    stream_quote_char=self.stream.dialect['quoteChar'],
+                    static_quote_char=self.dialect['quotechar']))
+
+            if self.stream.dialect['doubleQuote'] != self.dialect['doublequote']:
+                # translations are in Canada plugin
+                raise TabulatorException(p.toolkit._("File is using double quoting {stream_double_quote} instead of {static_double_quote}").format(
+                    stream_double_quote=self.stream.dialect['doubleQuote'],
+                    static_double_quote=self.dialect['doublequote']))
+
         return self.stream
 
     def __exit__(self, *args):
