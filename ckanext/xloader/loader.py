@@ -89,19 +89,19 @@ class UnknownEncodingStream(object):
 
         # (canada fork only): check stream dialect with passed dialect
         if self.dialect and self.stream.dialect:
-            if self.stream.dialect['delimiter'] != self.dialect['delimiter']:
+            if 'delimiter' in self.stream.dialect and self.stream.dialect['delimiter'] != self.dialect['delimiter']:
                 # translations are in Canada plugin
                 raise TabulatorException(p.toolkit._("File is using delimeter {stream_delimeter} instead of {static_delimeter}").format(
                     stream_delimeter=self.stream.dialect['delimiter'],
                     static_delimeter=self.dialect['delimiter']))
 
-            if self.stream.dialect['quoteChar'] != self.dialect['quotechar']:
+            if 'quoteChar' in self.stream.dialect and self.stream.dialect['quoteChar'] != self.dialect['quotechar']:
                 # translations are in Canada plugin
                 raise TabulatorException(p.toolkit._("File is using quoting character {stream_quote_char} instead of {static_quote_char}").format(
                     stream_quote_char=self.stream.dialect['quoteChar'],
                     static_quote_char=self.dialect['quotechar']))
 
-            if self.stream.dialect['doubleQuote'] != self.dialect['doublequote']:
+            if 'doubleQuote' in self.stream.dialect and self.stream.dialect['doubleQuote'] != self.dialect['doublequote']:
                 # translations are in Canada plugin
                 raise TabulatorException(p.toolkit._("File is using double quoting {stream_double_quote} instead of {static_double_quote}").format(
                     stream_double_quote=self.stream.dialect['doubleQuote'],
