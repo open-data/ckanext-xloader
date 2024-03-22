@@ -27,7 +27,7 @@ from ckan.plugins.toolkit import config
 import ckanext.datastore.backend.postgres as datastore_db
 
 try:
-    from ckanext.canada.tabulator import (
+    from ckanext.canada.tabulate import (
         CanadaStream as TabulatorStream,
         CanadaCSVParser as TabulatorCSVParser
     )
@@ -174,6 +174,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
         decoding_result = detect_encoding(csv_filepath)
         logger.info("load_csv: Decoded encoding: %s", decoding_result)
     else:
+        # (canada fork only): log static encoding
         decoding_result = {'confidence': 1.0, 'language': '', 'encoding': encoding}
         logger.info("load_csv: Static encoding: %s", decoding_result)
     has_logged_dialect = False
@@ -418,6 +419,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
         decoding_result = detect_encoding(table_filepath)
         logger.info("load_table: Decoded encoding: %s", decoding_result)
     else:
+        # (canada fork only): log static encoding
         decoding_result = {'confidence': 1.0, 'language': '', 'encoding': encoding}
         logger.info("load_table: Static encoding: %s", decoding_result)
     has_logged_dialect = False
