@@ -50,14 +50,9 @@ class UnknownEncodingStream(object):
                         adds in logger argument for extra logging
     """
 
-    def __init__(self, filepath, file_format, decoding_result, tabulator_args={}, force_encoding=False, logger=None, **kwargs):
+    def __init__(self, filepath, file_format, decoding_result, **kwargs):
         self.filepath = filepath
         self.file_format = file_format
-        self.dialect = tabulator_args.get('dialect')
-        self.custom_parsers = tabulator_args.get('custom_parsers')
-        self.stream_class = tabulator_args.get('stream_class', Stream)
-        self.force_encoding = force_encoding
-        self.logger = logger
         self.stream_args = kwargs
         self.decoding_result = decoding_result  # {'encoding': 'EUC-JP', 'confidence': 0.99}
 
@@ -65,40 +60,39 @@ class UnknownEncodingStream(object):
         try:
 
             if (self.decoding_result and self.decoding_result['confidence'] and self.decoding_result['confidence'] > 0.7):
-                self.stream = self.stream_class(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                                format=self.file_format, encoding=self.decoding_result['encoding'],
-                                                custom_parsers=self.custom_parsers, ** self.stream_args).__enter__()
-            else:
-                self.stream = self.stream_class(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                                format=self.file_format, custom_parsers=self.custom_parsers,
+                self.stream = Stream(self.filepath, format=self.file_format, encoding=self.decoding_result['encoding'],
                                                 ** self.stream_args).__enter__()
+            else:
+                self.stream = Stream(self.filepath, format=self.file_format, ** self.stream_args).__enter__()
 
         except (EncodingError, UnicodeDecodeError):
-            if self.force_encoding:
-                raise EncodingError('File must be encoded with: %s' % self.decoding_result['encoding'])
-            self.stream = self.stream_class(self.filepath, static_dialect=self.dialect, logger=self.logger,
-                                            format=self.file_format, encoding=SINGLE_BYTE_ENCODING,
-                                            custom_parsers=self.custom_parsers, **self.stream_args).__enter__()
+            self.stream = Stream(self.filepath, format=self.file_format,
+                                            encoding=SINGLE_BYTE_ENCODING, **self.stream_args).__enter__()
 
         # (canada fork only): check stream dialect with passed dialect
-        if self.dialect and self.stream.dialect:
-            if 'delimiter' in self.stream.dialect and self.stream.dialect['delimiter'] != self.dialect['delimiter']:
-                # translations are in Canada plugin
-                raise TabulatorException(p.toolkit._("File is using delimeter {stream_delimeter} instead of {static_delimeter}").format(
-                    stream_delimeter=self.stream.dialect['delimiter'],
-                    static_delimeter=self.dialect['delimiter']))
+        #TODO: figure out how to move this into the Canada extension...somewhere in the tabulate Stream class???
+        # if self.dialect and self.stream.dialect:
+        #     if 'delimiter' in self.stream.dialect and self.stream.dialect['delimiter'] != self.dialect['delimiter']:
+        #         # translations are in Canada plugin
+        #         raise TabulatorException(p.toolkit._("File is using delimeter {stream_delimeter} instead of {static_delimeter}").format(
+        #             stream_delimeter=self.stream.dialect['delimiter'],
+        #             static_delimeter=self.dialect['delimiter']))
 
-            if 'quoteChar' in self.stream.dialect and self.stream.dialect['quoteChar'] != self.dialect['quotechar']:
-                # translations are in Canada plugin
-                raise TabulatorException(p.toolkit._("File is using quoting character {stream_quote_char} instead of {static_quote_char}").format(
-                    stream_quote_char=self.stream.dialect['quoteChar'],
-                    static_quote_char=self.dialect['quotechar']))
+        #     if 'quoteChar' in self.stream.dialect and self.stream.dialect['quoteChar'] != self.dialect['quotechar']:
+        #         # translations are in Canada plugin
+        #         raise TabulatorException(p.toolkit._("File is using quoting character {stream_quote_char} instead of {static_quote_char}").format(
+        #             stream_quote_char=self.stream.dialect['quoteChar'],
+        #             static_quote_char=self.dialect['quotechar']))
 
-            if 'doubleQuote' in self.stream.dialect and self.stream.dialect['doubleQuote'] != self.dialect['doublequote']:
-                # translations are in Canada plugin
-                raise TabulatorException(p.toolkit._("File is using double quoting {stream_double_quote} instead of {static_double_quote}").format(
-                    stream_double_quote=self.stream.dialect['doubleQuote'],
-                    static_double_quote=self.dialect['doublequote']))
+        #     if 'doubleQuote' in self.stream.dialect and self.stream.dialect['doubleQuote'] != self.dialect['doublequote']:
+        #         # translations are in Canada plugin
+        #         raise TabulatorException(p.toolkit._("File is using double quoting {stream_double_quote} instead of {static_double_quote}").format(
+        #             stream_double_quote=self.stream.dialect['doubleQuote'],
+        #             static_double_quote=self.dialect['doublequote']))
+
+        #TODO: (canada fork only):
+        #TODO: figure out how to move this into the Canada extension...somewhere in the tabulate Stream class???
+        # raise EncodingError('File must be encoded with: %s' % self.decoding_result['encoding'])
 
         return self.stream
 
@@ -160,33 +154,20 @@ def _clear_datastore_resource(resource_id):
         conn.execute('TRUNCATE TABLE "{}"'.format(resource_id))
 
 
-def load_csv(csv_filepath, resource_id, mimetype='text/csv', tabulator_args={}, logger=None):
+def load_csv(csv_filepath, resource_id, mimetype='text/csv', logger=None):
     '''Loads a CSV into DataStore. Does not create the indexes.'''
 
-    encoding = tabulator_args.get('encoding')
-
-    if not encoding:
-        decoding_result = detect_encoding(csv_filepath)
-        logger.info("load_csv: Decoded encoding: %s", decoding_result)
-    else:
-        # (canada fork only): log static encoding
-        decoding_result = {'confidence': 1.0, 'language': '', 'encoding': encoding}
-        logger.info("load_csv: Static encoding: %s", decoding_result)
+    decoding_result = detect_encoding(csv_filepath)
+    logger.info("load_csv: Decoded encoding: %s", decoding_result)
     # Determine the header row
     try:
         file_format = os.path.splitext(csv_filepath)[1].strip('.')
-        with UnknownEncodingStream(csv_filepath, file_format, decoding_result,
-                                   tabulator_args=tabulator_args,
-                                   force_encoding=bool(encoding),
-                                   logger=logger) as stream:
+        with UnknownEncodingStream(csv_filepath, file_format, decoding_result) as stream:
             header_offset, headers = headers_guess(stream.sample)
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
-            with UnknownEncodingStream(csv_filepath, file_format, decoding_result,
-                                       tabulator_args=tabulator_args,
-                                       force_encoding=bool(encoding),
-                                       logger=logger) as stream:
+            with UnknownEncodingStream(csv_filepath, file_format, decoding_result) as stream:
                 header_offset, headers = headers_guess(stream.sample)
         except TabulatorException as e:
             raise LoaderError('Tabulator error: {}'.format(e))
@@ -219,10 +200,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', tabulator_args={}, 
     try:
         save_args = {'target': f_write.name, 'format': 'csv', 'encoding': 'utf-8', 'delimiter': delimiter}
         try:
-            with UnknownEncodingStream(csv_filepath, file_format, decoding_result,
-                                       skip_rows=skip_rows, tabulator_args=tabulator_args,
-                                       force_encoding=bool(encoding),
-                                       logger=logger) as stream:
+            with UnknownEncodingStream(csv_filepath, file_format, decoding_result) as stream:
                 stream.save(**save_args)
         except (EncodingError, UnicodeDecodeError):
             with Stream(csv_filepath, format=file_format, encoding=SINGLE_BYTE_ENCODING,
@@ -406,33 +384,20 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', tabulator_args=
     Largely copied from datapusher - see below. Is slower than load_csv.
     '''
 
-    encoding = tabulator_args.get('encoding')
-
     # Determine the header row
     logger.info('Determining column names and types')
-    if not encoding:
-        decoding_result = detect_encoding(table_filepath)
-        logger.info("load_table: Decoded encoding: %s", decoding_result)
-    else:
-        # (canada fork only): log static encoding
-        decoding_result = {'confidence': 1.0, 'language': '', 'encoding': encoding}
-        logger.info("load_table: Static encoding: %s", decoding_result)
+    decoding_result = detect_encoding(table_filepath)
+    logger.info("load_table: Decoded encoding: %s", decoding_result)
     try:
         file_format = os.path.splitext(table_filepath)[1].strip('.')
         with UnknownEncodingStream(table_filepath, file_format, decoding_result,
-                                   post_parse=[TypeConverter().convert_types],
-                                   tabulator_args=tabulator_args,
-                                   force_encoding=bool(encoding),
-                                   logger=logger) as stream:
+                                   post_parse=[TypeConverter().convert_types]) as stream:
             header_offset, headers = headers_guess(stream.sample)
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
             with UnknownEncodingStream(table_filepath, file_format, decoding_result,
-                                       post_parse=[TypeConverter().convert_types],
-                                       tabulator_args=tabulator_args,
-                                       force_encoding=bool(encoding),
-                                       logger=logger) as stream:
+                                       post_parse=[TypeConverter().convert_types]) as stream:
                 header_offset, headers = headers_guess(stream.sample)
         except TabulatorException as e:
             raise LoaderError('Tabulator error: {}'.format(e))
@@ -475,10 +440,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', tabulator_args=
 
     with UnknownEncodingStream(table_filepath, file_format, decoding_result,
                                skip_rows=skip_rows,
-                               post_parse=[type_converter.convert_types],
-                               tabulator_args=tabulator_args,
-                               force_encoding=bool(encoding),
-                               logger=logger) as stream:
+                               post_parse=[type_converter.convert_types]) as stream:
         def row_iterator():
             for row in stream:
                 data_row = {}

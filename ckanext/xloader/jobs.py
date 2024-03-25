@@ -23,7 +23,6 @@ from . import loader
 from . import db
 from .job_exceptions import JobError, HTTPError, DataTooBigError, FileCouldNotBeLoadedError
 from .utils import set_resource_metadata, get_xloader_user_context
-from .interfaces import ITabulator
 
 
 SSL_VERIFY = asbool(config.get('ckanext.xloader.ssl_verify', True))
@@ -160,37 +159,11 @@ def xloader_data_into_datastore_(input, job_dict):
     logger.info('File hash: %s', file_hash)
     resource['hash'] = file_hash
 
-    # (canada fork only): use ITabulator implementation
-    # TODO: upstream contribution??
-    def _get_tabulator_args():
-        args = {}
-
-        for plugin in PluginImplementations(ITabulator):
-            encoding = plugin.get_encoding()
-            if encoding:
-                args['encoding'] = encoding
-
-            dialect = plugin.get_dialect(resource.get('format', '').lower())
-            if dialect:
-                args['dialect'] = dialect
-
-            parsers = plugin.get_parsers()
-            if parsers:
-                args['custom_parsers'] = parsers
-
-            stream_class = plugin.get_stream_class()
-            if stream_class:
-                args['stream_class'] = stream_class
-
-        return args
-
     def direct_load():
         fields = loader.load_csv(
             tmp_file.name,
             resource_id=resource['id'],
             mimetype=resource.get('format'),
-            # (canada fork only): adds in tabulator arguments to pass to the loaders
-            tabulator_args=_get_tabulator_args(),
             logger=logger)
         loader.calculate_record_count(
             resource_id=resource['id'], logger=logger)
@@ -211,8 +184,6 @@ def xloader_data_into_datastore_(input, job_dict):
             loader.load_table(tmp_file.name,
                               resource_id=resource['id'],
                               mimetype=resource.get('format'),
-                              # (canada fork only): adds in tabulator arguments to pass to the loaders
-                              tabulator_args=_get_tabulator_args(),
                               logger=logger)
         except JobError as e:
             logger.error('Error during tabulator load: %s', e)
