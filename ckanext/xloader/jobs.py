@@ -17,11 +17,13 @@ import sqlalchemy as sa
 
 from ckan.plugins.toolkit import get_action, asbool, ObjectNotFound, config
 from ckan.lib.uploader import get_resource_uploader
+from ckan.plugins import PluginImplementations
 
 from . import loader
 from . import db
 from .job_exceptions import JobError, HTTPError, DataTooBigError, FileCouldNotBeLoadedError
 from .utils import set_resource_metadata, get_xloader_user_context
+from .interfaces import ITabulator
 
 
 SSL_VERIFY = asbool(config.get('ckanext.xloader.ssl_verify', True))
@@ -158,31 +160,37 @@ def xloader_data_into_datastore_(input, job_dict):
     logger.info('File hash: %s', file_hash)
     resource['hash'] = file_hash
 
-    # (canada fork only): use custom ckanext.validation.static_validation_options
-    #                     to set static dialect and encoding for goodtables/frictionless/tabulator
-    #                     or use the Resource's validation_options if they exist.
+    # (canada fork only): use ITabulator implementation
     # TODO: upstream contribution??
-    def _get_validation_options():
-        validation_options = {}
-        static_validation_options = config.get(
-            u'ckanext.validation.static_validation_options')
-        if static_validation_options:
-            validation_options = json.loads(static_validation_options)
-        elif resource.get('validation_options', None):
-            validation_options = json.loads(resource.get('validation_options'))
-        return validation_options
+    def _get_tabulator_args():
+        args = {}
+
+        for plugin in PluginImplementations(ITabulator):
+            encoding = plugin.get_encoding()
+            if encoding:
+                args['encoding'] = encoding
+
+            dialect = plugin.get_dialect(resource.get('format', '').lower())
+            if dialect:
+                args['dialect'] = dialect
+
+            parsers = plugin.get_parsers()
+            if parsers:
+                args['custom_parsers'] = parsers
+
+            stream_class = plugin.get_stream_class()
+            if stream_class:
+                args['stream_class'] = stream_class
+
+        return args
 
     def direct_load():
-        validation_options = _get_validation_options()
         fields = loader.load_csv(
             tmp_file.name,
             resource_id=resource['id'],
             mimetype=resource.get('format'),
-            # (canada fork only): adds in dialect argument to pass static/resource dialect
-            dialect=validation_options.get('dialect', {})
-                .get(resource.get('format', '').lower(), None),
-            # (canada fork only): adds in encoding argument to pass static/resource encoding
-            encoding=validation_options.get('encoding', None),
+            # (canada fork only): adds in tabulator arguments to pass to the loaders
+            tabulator_args=_get_tabulator_args(),
             logger=logger)
         loader.calculate_record_count(
             resource_id=resource['id'], logger=logger)
@@ -199,16 +207,12 @@ def xloader_data_into_datastore_(input, job_dict):
         logger.info('File Hash updated for resource: %s', resource['hash'])
 
     def tabulator_load():
-        validation_options = _get_validation_options()
         try:
             loader.load_table(tmp_file.name,
                               resource_id=resource['id'],
                               mimetype=resource.get('format'),
-                              # (canada fork only): adds in dialect argument to pass static/resource dialect
-                              dialect=validation_options.get('dialect', {})
-                                .get(resource.get('format', '').lower(), None),
-                              # (canada fork only): adds in encoding argument to pass static/resource encoding
-                              encoding=validation_options.get('encoding', None),
+                              # (canada fork only): adds in tabulator arguments to pass to the loaders
+                              tabulator_args=_get_tabulator_args(),
                               logger=logger)
         except JobError as e:
             logger.error('Error during tabulator load: %s', e)
