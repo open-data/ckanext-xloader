@@ -356,7 +356,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                         error_str = str(e)
                         logger.warning(error_str)
                         raise LoaderError('Error during the load into PostgreSQL:'
-                                        ' {}'.format(error_str))
+                                          ' {}'.format(error_str))
 
             finally:
                 cur.close()
