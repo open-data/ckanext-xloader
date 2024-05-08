@@ -15,9 +15,9 @@ jobs:
           if [[ $(ls ./changes/${{ github.event.number }}.*) ]]; then
             exit 0
           else
-            echo "\n"
+            echo -e "\n"
             echo "ERROR: changelog for PR ${{ github.event.number }} does not exist."
-            echo "\n"
+            echo -e "\n"
             exit 1
           fi
 
@@ -30,8 +30,8 @@ jobs:
           if [[ $allowed_types =~ "\"$extension\"" ]]; then
             exit 0
           else
-            echo "\n"
+            echo -e "\n"
             echo "ERROR: changelog file ending in ${extension} not supported."
-            echo "\n"
+            echo -e "\n"
             exit 1
           fi
