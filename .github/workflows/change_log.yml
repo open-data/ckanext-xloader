@@ -14,12 +14,12 @@ jobs:
         run: |
           if [[ $(ls ./changes/${{ github.event.number }}.*) ]]; then
             echo -e "\n"
-            echo "\033[0;36mINFO: changelog for PR ${{ github.event.number }} exists.\033[0;0m"
+            echo -e "\033[0;36mINFO: changelog for PR ${{ github.event.number }} exists.\033[0;0m"
             echo -e "\n"
             exit 0
           else
             echo -e "\n"
-            echo "\033[0;31mERROR: changelog for PR ${{ github.event.number }} does not exist.\033[0;0m"
+            echo -e "\033[0;31mERROR: changelog for PR ${{ github.event.number }} does not exist.\033[0;0m"
             echo -e "\n"
             exit 1
           fi
@@ -32,12 +32,12 @@ jobs:
           allowed_types='[ "fix", "bugfix", "hotfix", "feature", "misc", "changes", "migration", "removal" ]'
           if [[ $allowed_types =~ "\"$extension\"" ]]; then
             echo -e "\n"
-            echo "\033[0;36mINFO: extension ${extension} accepted.\033[0;0m"
+            echo -e "\033[0;36mINFO: extension ${extension} accepted.\033[0;0m"
             echo -e "\n"
             exit 0
           else
             echo -e "\n"
-            echo "\033[0;31mERROR: changelog file ending in ${extension} not supported.\033[0;0m"
+            echo -e "\033[0;31mERROR: changelog file ending in ${extension} not supported.\033[0;0m"
             echo -e "\n"
             exit 1
           fi
