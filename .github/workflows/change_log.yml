@@ -12,7 +12,13 @@ jobs:
 
       - name: Check Chanelog Exists
         run: |
-          ls ./changes/${{ github.event.number }}.* || exit 1
+          ls ./changes/${{ github.event.number }}.*
+          if [[ $? -ne 0 ]]; then
+              echo "\n"
+              echo "ERROR: changelog for PR ${{ github.event.number }} does not exist."
+              echo "\n"
+              exit 1
+          fi
 
       - name: Check Changelog Extension
         run: |
