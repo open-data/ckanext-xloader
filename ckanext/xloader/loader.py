@@ -221,7 +221,8 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                 # (canada fork only): strip trailing whitespace from cell values
                 for row in stream:
                     for _index, _cell in enumerate(row):
-                        row[_index] = str(_cell).strip()
+                        if isinstance(_cell, str):
+                            row[_index] = _cell.strip()
                     stream.save(**save_args)  # have to save inside of the tabulator stream iterator
                 has_logged_dialect = True
         except (EncodingError, UnicodeDecodeError):
@@ -230,7 +231,8 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                 # (canada fork only): strip trailing whitespace from cell values
                 for row in stream:
                     for _index, _cell in enumerate(row):
-                        row[_index] = str(_cell).strip()
+                        if isinstance(_cell, str):
+                            row[_index] = _cell.strip()
                     stream.save(**save_args)  # have to save inside of the tabulator stream iterator
         csv_filepath = f_write.name
 
@@ -532,8 +534,6 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
             #logger.info('Saving chunk {number}'.format(number=i))
             for row in records:
                 for column_index, column_name in enumerate(row):
-                    # (canada fork only): strip trailing whitespace from cell values
-                    row[column_name] = str(row[column_name]).strip()
                     if headers_dicts[column_index]['type'] in non_empty_types and row[column_name] == '':
                         row[column_name] = None
             send_resource_to_datastore(resource_id, headers_dicts, records)

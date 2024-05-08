@@ -109,6 +109,11 @@ class TypeConverter:
             for cell_index, cell_value in enumerate(row):
                 if cell_value is None:
                     row[cell_index] = ''
+                # (canada fork only): strip trailing whitespace from cell values
+                if isinstance(cell_value, six.text_type):
+                    # strip white space around cell values
+                    cell_value = cell_value.strip()
+                    row[cell_index] = cell_value.strip()
                 if not cell_value:
                     continue
                 cell_type = self.types[cell_index] if self.types else None
