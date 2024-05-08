@@ -219,6 +219,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                                        force_encoding=bool(encoding),
                                        logger=(logger if not has_logged_dialect else None)) as stream:
                 # (canada fork only): strip trailing whitespace from cell values
+                stream.save(**save_args)  # have to save headers
                 for row in stream:
                     for _index, _cell in enumerate(row):
                         if isinstance(_cell, str):
@@ -229,6 +230,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
             with Stream(csv_filepath, format=file_format, encoding=SINGLE_BYTE_ENCODING,
                         skip_rows=skip_rows) as stream:
                 # (canada fork only): strip trailing whitespace from cell values
+                stream.save(**save_args)  # have to save headers
                 for row in stream:
                     for _index, _cell in enumerate(row):
                         if isinstance(_cell, str):
