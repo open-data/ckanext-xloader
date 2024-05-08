@@ -1,0 +1,30 @@
+name: Changelog Entry
+on: [pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  check_file:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check Chanelog Exists
+        run: |
+          ls ./changes/${{ github.event.number }}.* || exit 1
+
+      - name: Check Changelog Extension
+        run: |
+          fullfile=$(ls ./changes/${{ github.event.number }}.*)
+          filename=$(basename -- "$fullfile")
+          extension="${filename##*.}"
+          allowed_types='[ "fix", "bugfix", "hotfix", "feature", "misc", "changes", "migration", "removal" ]'
+          if [[ $allowed_types =~ "\"$extension\"" ]]; then
+              exit 0
+          else
+              echo "\n"
+              echo "ERROR: changelog file ending in ${extension} not supported."
+              echo "\n"
+              exit 1
+          fi
