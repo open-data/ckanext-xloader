@@ -12,12 +12,13 @@ jobs:
 
       - name: Check Chanelog Exists
         run: |
-          ls ./changes/${{ github.event.number }}.*
-          if [[ $? -ne 0 ]]; then
-              echo "\n"
-              echo "ERROR: changelog for PR ${{ github.event.number }} does not exist."
-              echo "\n"
-              exit 1
+          if [[ $(ls ./changes/${{ github.event.number }}.*) ]]; then
+            exit 0
+          else
+            echo "\n"
+            echo "ERROR: changelog for PR ${{ github.event.number }} does not exist."
+            echo "\n"
+            exit 1
           fi
 
       - name: Check Changelog Extension
@@ -27,10 +28,10 @@ jobs:
           extension="${filename##*.}"
           allowed_types='[ "fix", "bugfix", "hotfix", "feature", "misc", "changes", "migration", "removal" ]'
           if [[ $allowed_types =~ "\"$extension\"" ]]; then
-              exit 0
+            exit 0
           else
-              echo "\n"
-              echo "ERROR: changelog file ending in ${extension} not supported."
-              echo "\n"
-              exit 1
+            echo "\n"
+            echo "ERROR: changelog file ending in ${extension} not supported."
+            echo "\n"
+            exit 1
           fi
