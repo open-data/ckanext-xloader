@@ -228,7 +228,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                                 row[_index] = _cell.strip()
                         yield row
                 stream.iter = strip_white_space_iter
-                stream.save(**save_args)  # have to save inside of the tabulator stream iterator
+                stream.save(**save_args)
                 has_logged_dialect = True
         except (EncodingError, UnicodeDecodeError):
             with Stream(csv_filepath, format=file_format, encoding=SINGLE_BYTE_ENCODING,
@@ -242,7 +242,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                                 row[_index] = _cell.strip()
                         yield row
                 stream.iter = strip_white_space_iter
-                stream.save(**save_args)  # have to save inside of the tabulator stream iterator
+                stream.save(**save_args)
         csv_filepath = f_write.name
 
         # datastore db connection
