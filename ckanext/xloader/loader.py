@@ -220,23 +220,29 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
                                        force_encoding=bool(encoding),
                                        logger=(logger if not has_logged_dialect else None)) as stream:
                 # (canada fork only): strip trailing whitespace from cell values
-                stream.save(**save_args)  # have to save headers
-                for row in stream:
-                    for _index, _cell in enumerate(row):
-                        if isinstance(_cell, str):
-                            row[_index] = _cell.strip()
-                    stream.save(**save_args)  # have to save inside of the tabulator stream iterator
+                super_iter = stream.iter
+                def strip_white_space_iter():
+                    for row in super_iter():
+                        for _index, _cell in enumerate(row):
+                            if isinstance(_cell, str):
+                                row[_index] = _cell.strip()
+                        yield row
+                stream.iter = strip_white_space_iter
+                stream.save(**save_args)  # have to save inside of the tabulator stream iterator
                 has_logged_dialect = True
         except (EncodingError, UnicodeDecodeError):
             with Stream(csv_filepath, format=file_format, encoding=SINGLE_BYTE_ENCODING,
                         skip_rows=skip_rows) as stream:
                 # (canada fork only): strip trailing whitespace from cell values
-                stream.save(**save_args)  # have to save headers
-                for row in stream:
-                    for _index, _cell in enumerate(row):
-                        if isinstance(_cell, str):
-                            row[_index] = _cell.strip()
-                    stream.save(**save_args)  # have to save inside of the tabulator stream iterator
+                super_iter = stream.iter
+                def strip_white_space_iter():
+                    for row in super_iter():
+                        for _index, _cell in enumerate(row):
+                            if isinstance(_cell, str):
+                                row[_index] = _cell.strip()
+                        yield row
+                stream.iter = strip_white_space_iter
+                stream.save(**save_args)  # have to save inside of the tabulator stream iterator
         csv_filepath = f_write.name
 
         # datastore db connection
