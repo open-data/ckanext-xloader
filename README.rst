@@ -10,13 +10,13 @@ XLoader - Canada Fork Changes
 - Loading to DataStore requires a successful Validation report.
 - The webhook functionality has been changed to use the local running framework.
 - Adds a new job to remove unsupported extensions and resource types from the DataStore.
-- Adds the capability to control type guessing strictness if type guessing is enabled (`ckanext.xloader.use_type_guessing`):
-  ::
-  ckanext.xloader.strict_type_guessing = True
+- Adds the capability to control type guessing strictness if type guessing is enabled (`ckanext.xloader.use_type_guessing`)::
 
-- Adds the capability to set dedicated worker queues per resource (queue name is the resource ID). This allows for separate control over the running of worker queues, allowing for custom services to run multiple resource queues at the same time:
-  ::
-  ckanext.xloader.use_designated_queues = True
+    ckanext.xloader.strict_type_guessing = True
+
+- Adds the capability to set dedicated worker queues per resource (queue name is the resource ID). This allows for separate control over the running of worker queues, allowing for custom services to run multiple resource queues at the same time::
+
+    ckanext.xloader.use_designated_queues = True
 
 
 .. image:: https://travis-ci.org/ckan/ckanext-xloader.svg?branch=master
