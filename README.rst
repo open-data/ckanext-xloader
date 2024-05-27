@@ -9,6 +9,7 @@ XLoader - Canada Fork Changes
 - Xloader will not automatically queue Load to DataStore jobs when the Validation extension is enabled.
 - Loading to DataStore requires a successful Validation report.
 - The webhook functionality has been changed to use the local running framework.
+- Uses `get_resource_uploader` to retrieve the resource data instead of the resource url, allowing for extensions like CloudStorage to work with Xloader.
 - Adds a new job to remove unsupported extensions and resource types from the DataStore.
 - Adds the capability to control type guessing strictness if type guessing is enabled (`ckanext.xloader.use_type_guessing`)::
 
