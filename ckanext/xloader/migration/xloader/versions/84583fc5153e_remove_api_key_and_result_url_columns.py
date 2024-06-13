@@ -17,8 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    op.drop_column('jobs', 'result_url')
-    op.drop_column('jobs', 'api_key')
+    context = op.get_context()
+    inspect = sa.inspect(context.bind)
+    columns = inspect.get_columns('jobs')
+    column_names = [c['name'] for c in columns]
+    if 'result_url' in column_names:
+        op.drop_column('jobs', 'result_url')
+    if 'api_key' in column_names:
+        op.drop_column('jobs', 'api_key')
 
 
 def downgrade():

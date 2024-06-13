@@ -3,6 +3,9 @@
 import sys
 import click
 from ckanext.xloader.command import XloaderCmd
+# (canada fork only): add db init
+from ckanext.xloader.db import init
+from ckan.plugins.toolkit import config
 
 # Click commands for CKAN 2.9 and above
 
@@ -47,6 +50,15 @@ def submit(dataset_spec, y, dry_run):
     if cmd.error_occured:
         print('Finished but saw errors - see above for details')
         sys.exit(1)
+
+
+# (canada fork only): add db init
+@xloader.command()
+def db_init():
+    """
+    Creates Xloader database tables.
+    """
+    init(config)
 
 
 def get_commands():
