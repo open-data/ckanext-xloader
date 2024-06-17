@@ -2,6 +2,24 @@
    these badges work. The necessary Travis and Coverage config files have been
    generated for you.
 
+=============================
+XLoader - Canada Fork Changes
+=============================
+
+- Xloader will not automatically queue Load to DataStore jobs when the Validation extension is enabled.
+- Loading to DataStore requires a successful Validation report.
+- The webhook functionality has been changed to use the local running framework.
+- Uses `get_resource_uploader` to retrieve the resource data instead of the resource url, allowing extensions like CloudStorage to work with Xloader.
+- Adds a new job to remove unsupported extensions and resource types from the DataStore.
+- Adds the capability to control type guessing strictness if type guessing is enabled (`ckanext.xloader.use_type_guessing`)::
+
+    ckanext.xloader.strict_type_guessing = True
+
+- Adds the capability to set dedicated worker queues per resource (queue name is the resource ID). This allows for separate control over the running of worker queues, allowing for custom services to run multiple resource queues at the same time::
+
+    ckanext.xloader.use_designated_queues = True
+
+
 .. image:: https://travis-ci.org/ckan/ckanext-xloader.svg?branch=master
     :target: https://travis-ci.org/ckan/ckanext-xloader
 
