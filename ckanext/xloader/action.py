@@ -146,10 +146,14 @@ def xloader_submit(context, data_dict):
         }
     }
     timeout = config.get('ckanext.xloader.job_timeout', '3600')
+    # (canada fork only): capability to use designated queues per resource
+    queue = rq_jobs.DEFAULT_QUEUE_NAME
+    if p.toolkit.asbool(p.toolkit.config.get('ckanext.xloader.use_designated_queues')):
+        queue = res_id
     try:
         job = enqueue_job(
             jobs.xloader_data_into_datastore, [data], rq_kwargs=dict(timeout=timeout),
-            title="Upload to DataStore"
+            title="Upload to DataStore", queue=queue
         )
     except Exception:
         log.exception('Unable to enqueued xloader res_id=%s', res_id)
