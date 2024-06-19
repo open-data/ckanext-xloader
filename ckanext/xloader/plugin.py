@@ -108,11 +108,16 @@ class xloaderPlugin(plugins.SingletonPlugin):
     # IResourceController
 
     def after_create(self, context, resource_dict):
+        # (canada fork only): disable if validation is loaded
         # disable automatic submission of resource to xloader if validation is enabled
-        if 'validation' in toolkit.config.get('ckan.plugins'):
+        if plugins.plugin_loaded('validation'):
             return
 
     def after_resource_create(self, context, resource_dict):
+        # (canada fork only): disable if validation is loaded
+        # disable automatic submission of resource to xloader if validation is enabled
+        if plugins.plugin_loaded('validation'):
+            return
         self._submit_to_xloader(resource_dict)
 
     def before_resource_show(self, resource_dict):
