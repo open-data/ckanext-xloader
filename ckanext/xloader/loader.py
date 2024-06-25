@@ -464,9 +464,8 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
     skip_rows.append({'type': 'preset', 'value': 'blank'})
 
     TYPES, TYPE_MAPPING = get_types()
-    # (canada fork only): add config option for strict guessing
-    # TODO: upstream contribution??
-    strict_guessing = p.toolkit.asbool(config.get('ckanext.xloader.strict_type_guessing', True))
+    strict_guessing = p.toolkit.asbool(
+        config.get('ckanext.xloader.strict_type_guessing', True))
     types = type_guess(stream.sample[1:], types=TYPES, strict=strict_guessing)
 
     # override with types user requested
@@ -549,17 +548,18 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
 
 
 _TYPE_MAPPING = {
-    "<type 'str'>": 'text',  # (canada fork only): Binary support, py2 support
+    "<type 'str'>": 'text',
     "<type 'unicode'>": 'text',
-    "<type 'bytes'>": 'text',  # (canada fork only): Binary support, py3 support
+    "<type 'bytes'>": 'text',
     "<type 'bool'>": 'text',
     "<type 'int'>": 'numeric',
     "<type 'float'>": 'numeric',
     "<type 'datetime.datetime'>": 'timestamp',  # (canada fork only): py2 support
     "<class 'decimal.Decimal'>": 'numeric',
+    "<type 'datetime.datetime'>": 'timestamp',
     "<class 'str'>": 'text',
-    "<class 'unicode'>": 'text',  # (canada fork only): py2 support
-    "<class 'bytes'>": 'text',  # (canada fork only): Binary support, py3 support
+    "<class 'unicode'>": 'text',
+    "<class 'bytes'>": 'text',
     "<class 'bool'>": 'text',
     "<class 'int'>": 'numeric',
     "<class 'float'>": 'numeric',
@@ -568,7 +568,6 @@ _TYPE_MAPPING = {
 
 
 def get_types():
-    # (canada fork only): Binary support
     _TYPES = [int, bool, str, binary_type, datetime.datetime, float, Decimal]
     TYPE_MAPPING = config.get('TYPE_MAPPING', _TYPE_MAPPING)
     return _TYPES, TYPE_MAPPING

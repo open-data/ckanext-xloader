@@ -3,7 +3,6 @@
 import json
 import datetime
 
-# (canada fork only): py2 support
 from six import text_type as str, binary_type
 
 from ckan import model
@@ -28,6 +27,8 @@ DEFAULT_FORMATS = [
     "ods",
     "application/vnd.oasis.opendocument.spreadsheet",
 ]
+
+from .job_exceptions import JobError
 
 
 class XLoaderFormats(object):
@@ -189,8 +190,8 @@ def headers_guess(rows, tolerance=1):
     return 0, []
 
 
-# (canada fork only): Binary support
 TYPES = [int, bool, str, binary_type, datetime.datetime, float, Decimal]
+
 
 def type_guess(rows, types=TYPES, strict=False):
     """ The type guesser aggregates the number of successful
@@ -250,7 +251,6 @@ def type_guess(rows, types=TYPES, strict=False):
         # element in case of a tie
         # See: http://stackoverflow.com/a/6783101/214950
         guesses_tuples = [(t, guess[t]) for t in types if t in guess]
-        # (canada fork only): raise on empty type guesses
         if not guesses_tuples:
             raise JobError('Failed to guess types')
         _columns.append(max(guesses_tuples, key=lambda t_n: t_n[1])[0])
