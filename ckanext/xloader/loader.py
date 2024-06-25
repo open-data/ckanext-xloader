@@ -159,7 +159,7 @@ def _clear_datastore_resource(resource_id):
 
 def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encoding=None, logger=None):
     '''Loads a CSV into DataStore. Does not create the indexes.'''
-
+    # (canada fork only): add capability for static encoding and dialect
     if not encoding:
         decoding_result = detect_encoding(csv_filepath)
         logger.info("load_csv: Decoded encoding: %s", decoding_result)
@@ -178,9 +178,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
-            with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
-                                       force_encoding=bool(encoding),
-                                       logger=(logger if not has_logged_dialect else None)) as stream:
+            with UnknownEncodingStream(csv_filepath, file_format, decoding_result) as stream:
                 header_offset, headers = headers_guess(stream.sample)
                 has_logged_dialect = True
         except TabulatorException as e:
@@ -202,7 +200,11 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
         logger.warning('Could not determine delimiter from file, use default ","')
         delimiter = ','
 
-    headers = [header.strip()[:MAX_COLUMN_LENGTH] for header in headers if header.strip()]
+    headers = [
+        header.strip()[:MAX_COLUMN_LENGTH].strip()
+        for header in headers
+        if header.strip()
+    ]
 
     # TODO worry about csv header name problems
     # e.g. duplicate names
@@ -402,18 +404,6 @@ def create_column_indexes(fields, resource_id, logger):
     logger.info('...column indexes created.')
 
 
-def _save_type_overrides(headers_dicts):
-    # copy 'type' to 'type_override' if it's not the default type (text)
-    # and there isn't already an override in place
-    for h in headers_dicts:
-        if h['type'] != 'text':
-            if 'info' in h:
-                if 'type_override' not in h['info']:
-                    h['info']['type_override'] = h['type']
-            else:
-                h['info'] = {'type_override': h['type']}
-
-
 def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, encoding=None, logger=None):
     '''Loads an Excel file (or other tabular data recognized by tabulator)
     into Datastore and creates indexes.
@@ -423,6 +413,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
 
     # Determine the header row
     logger.info('Determining column names and types')
+    # (canada fork only): add capability for static encoding and dialect
     if not encoding:
         decoding_result = detect_encoding(table_filepath)
         logger.info("load_table: Decoded encoding: %s", decoding_result)
@@ -518,9 +509,6 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
                     if type_override in list(_TYPE_MAPPING.values()):
                         h['type'] = type_override
 
-        # preserve any types that we have sniffed unless told otherwise
-        _save_type_overrides(headers_dicts)
-
         logger.info('Determined headers and types: %s', headers_dicts)
 
         '''
@@ -545,7 +533,7 @@ def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, e
         for i, records in enumerate(chunky(result, 250)):
             count += len(records)
             # (canada fork only): remove excessive logging
-            #logger.info('Saving chunk {number}'.format(number=i))
+            #logger.info('Saving chunk %s', i)
             for row in records:
                 for column_index, column_name in enumerate(row):
                     if headers_dicts[column_index]['type'] in non_empty_types and row[column_name] == '':

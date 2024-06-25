@@ -678,7 +678,7 @@ class TestLoadCsv(TestLoadBase):
             mimetype="text/csv",
             logger=logger,
         )
-        assert len(self._get_records(Session, resource_id)) == 2
+        assert len(self._get_records(Session, resource_id)) == 6
 
     def test_reload(self, Session):
         csv_filepath = get_sample_filepath("simple.csv")
@@ -961,14 +961,44 @@ class TestLoadTabulator(TestLoadBase):
             u"numeric",
             u"text",
         ]
-        # Check that the sniffed types have been recorded as overrides
-        rec = p.toolkit.get_action("datastore_search")(
-            None, {"resource_id": resource_id, "limit": 0}
+
+    def test_simple_large_file(self, Session):
+        csv_filepath = get_sample_filepath("simple-large.csv")
+        resource = factories.Resource()
+        resource_id = resource['id']
+        loader.load_table(
+            csv_filepath,
+            resource_id=resource_id,
+            mimetype="text/csv",
+            logger=logger,
         )
-        fields = [f for f in rec["fields"] if not f["id"].startswith("_")]
-        assert fields[0].get("info", {}).get("type_override", "") == "timestamp"
-        assert fields[1].get("info", {}).get("type_override", "") == "numeric"
-        assert fields[2].get("info", {}).get("type_override", "") == ""
+        assert self._get_column_types(Session, resource_id) == [
+            u"int4",
+            u"tsvector",
+            u"numeric",
+            u"text",
+        ]
+
+    def test_with_mixed_types(self, Session):
+        csv_filepath = get_sample_filepath("mixed_numeric_string_sample.csv")
+        resource = factories.Resource()
+        resource_id = resource['id']
+        loader.load_table(
+            csv_filepath,
+            resource_id=resource_id,
+            mimetype="text/csv",
+            logger=logger,
+        )
+        assert len(self._get_records(Session, resource_id)) == 6
+
+        assert self._get_column_types(Session, resource_id) == [
+            u'int4',
+            u'tsvector',
+            u'text',
+            u'text',
+            u'text',
+            u'numeric'
+        ]
 
     # test disabled by default to avoid adding large file to repo and slow test
     @pytest.mark.skip

@@ -7,31 +7,47 @@ import time
 import tempfile
 import json
 import datetime
+import os
 import traceback
 import sys
 
+from psycopg2 import errors
 from six.moves.urllib.parse import urlsplit
 import requests
 from rq import get_current_job
 import sqlalchemy as sa
 
-from ckan.plugins.toolkit import get_action, asbool, ObjectNotFound, config
+import ckan.lib.jobs as rq_jobs
+from ckan.plugins.toolkit import get_action, asbool, enqueue_job, ObjectNotFound, config, asbool
 from ckan.lib.uploader import get_resource_uploader
 
-from . import loader
-from . import db
+from . import db, loader
 from .job_exceptions import JobError, HTTPError, DataTooBigError, FileCouldNotBeLoadedError
-from .utils import set_resource_metadata, get_xloader_user_context
+from .utils import datastore_resource_exists, set_resource_metadata, get_xloader_user_context
 
+
+log = logging.getLogger(__name__)
 
 SSL_VERIFY = asbool(config.get('ckanext.xloader.ssl_verify', True))
 if not SSL_VERIFY:
     requests.packages.urllib3.disable_warnings()
 
 MAX_CONTENT_LENGTH = int(config.get('ckanext.xloader.max_content_length') or 1e9)
+# Don't try Tabulator load on large files
+MAX_TYPE_GUESSING_LENGTH = int(config.get('ckanext.xloader.max_type_guessing_length') or MAX_CONTENT_LENGTH / 10)
 MAX_EXCERPT_LINES = int(config.get('ckanext.xloader.max_excerpt_lines') or 0)
 CHUNK_SIZE = 16 * 1024  # 16kb
 DOWNLOAD_TIMEOUT = 30
+
+MAX_RETRIES = 1
+RETRYABLE_ERRORS = (
+    errors.DeadlockDetected,
+    errors.LockNotAvailable,
+    errors.ObjectInUse,
+)
+# Retries can only occur in cases where the datastore entry exists,
+# so use the standard timeout
+RETRIED_JOB_TIMEOUT = config.get('ckanext.xloader.job_timeout', '3600')
 
 
 # input = {
@@ -81,31 +97,66 @@ def xloader_data_into_datastore(input):
 
     job_id = get_current_job().id
     errored = False
+
+    logger = _get_logger(job_id=job_id)
+
+    db.init(config)
     try:
-        xloader_data_into_datastore_(input, job_dict)
+        # Store details of the job in the db
+        db.add_pending_job(job_id, **input)
+        xloader_data_into_datastore_(input, job_dict, logger)
         job_dict['status'] = 'complete'
         db.mark_job_as_completed(job_id, job_dict)
+    except sa.exc.IntegrityError as e:
+        db.mark_job_as_errored(job_id, str(e))
+        job_dict['status'] = 'error'
+        job_dict['error'] = str(e)
+        log.error('xloader error: job_id %s already exists', job_id)
+        errored = True
     except JobError as e:
         db.mark_job_as_errored(job_id, str(e))
         job_dict['status'] = 'error'
         job_dict['error'] = str(e)
-        logger.error('xloader error: {0}, {1}'.format(e, traceback.format_exc()))
+        log.error('xloader error: %s, %s', e, traceback.format_exc())
         errored = True
     except Exception as e:
+        if isinstance(e, RETRYABLE_ERRORS):
+            tries = job_dict['metadata'].get('tries', 0)
+            if tries < MAX_RETRIES:
+                tries = tries + 1
+                log.info("Job %s failed due to temporary error [%s], retrying", job_id, e)
+                job_dict['status'] = 'pending'
+                job_dict['metadata']['tries'] = tries
+                # (canada fork only): custom job title
+                job_title = "Retry Upload to DataStore ({})".format(tries)
+                # (canada fork only): capability to use designated queues per resource
+                custom_queue = rq_jobs.DEFAULT_QUEUE_NAME
+                if asbool(config.get('ckanext.xloader.use_designated_queues')):
+                    custom_queue = job_dict['metadata']['resource_id']
+                enqueue_job(
+                    xloader_data_into_datastore,
+                    [input],
+                    title=job_title, queue=custom_queue,
+                    rq_kwargs=dict(timeout=RETRIED_JOB_TIMEOUT)
+                )
+                return None
+
         db.mark_job_as_errored(
             job_id, traceback.format_tb(sys.exc_info()[2])[-1] + repr(e))
         job_dict['status'] = 'error'
         job_dict['error'] = str(e)
-        logger.error('xloader error: {0}, {1}'.format(e, traceback.format_exc()))
+        log.error('xloader error: %s, %s', e, traceback.format_exc())
         errored = True
     finally:
         # job_dict is defined in xloader_hook's docstring
-        is_saved_ok = callback_xloader_hook(job_dict=job_dict, logger=logger)
+        is_saved_ok = callback_xloader_hook(result_url=input['result_url'],
+                                            api_key=input['api_key'],
+                                            job_dict=job_dict)
         errored = errored or not is_saved_ok
     return 'error' if errored else None
 
 
-def xloader_data_into_datastore_(input, job_dict):
+def xloader_data_into_datastore_(input, job_dict, logger):
     '''This function:
     * downloads the resource (metadata) from CKAN
     * downloads the data
@@ -114,17 +165,6 @@ def xloader_data_into_datastore_(input, job_dict):
 
     (datapusher called this function 'push_to_datastore')
     '''
-    job_id = get_current_job().id
-    db.init(config)
-
-    # Store details of the job in the db
-    try:
-        db.add_pending_job(job_id, **input)
-    except sa.exc.IntegrityError:
-        raise JobError('job_id {} already exists'.format(job_id))
-
-    logger = _get_logger(job_id=job_id)
-
     validate_input(input)
 
     data = input['metadata']
@@ -225,11 +265,12 @@ def xloader_data_into_datastore_(input, job_dict):
     logger.info('Loading CSV')
     # If ckanext.xloader.use_type_guessing is not configured, fall back to
     # deprecated ckanext.xloader.just_load_with_messytables
-    use_type_guessing = asbool(config.get(
-        'ckanext.xloader.use_type_guessing', config.get(
-            'ckanext.xloader.just_load_with_messytables', False)))
-    logger.info("'use_type_guessing' mode is: %s",
-                use_type_guessing)
+    use_type_guessing = asbool(
+        config.get('ckanext.xloader.use_type_guessing', config.get(
+            'ckanext.xloader.just_load_with_messytables', False))) \
+        and not datastore_resource_exists(resource['id']) \
+        and os.path.getsize(tmp_file.name) <= MAX_TYPE_GUESSING_LENGTH
+    logger.info("'use_type_guessing' mode is: %s", use_type_guessing)
     try:
         if use_type_guessing:
             tabulator_load()
@@ -542,8 +583,7 @@ class StoringHandler(logging.Handler):
         self.input = input
 
     def emit(self, record):
-        conn = db.ENGINE.connect()
-        try:
+        with db.ENGINE.connect() as conn:
             # Turn strings into unicode to stop SQLAlchemy
             # "Unicode type received non-unicode bind param value" warnings.
             message = str(record.getMessage())
@@ -559,8 +599,6 @@ class StoringHandler(logging.Handler):
                 module=module,
                 funcName=funcName,
                 lineno=record.lineno))
-        finally:
-            conn.close()
 
 
 class DatetimeJsonEncoder(json.JSONEncoder):

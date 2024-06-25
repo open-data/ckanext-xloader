@@ -28,15 +28,17 @@ def xloader_status_description(status):
         return _('Not Uploaded Yet')
 
 
-def is_resource_supported_by_xloader(res_dict, check_access = True):
+def is_resource_supported_by_xloader(res_dict, check_access=True):
     is_supported_format = XLoaderFormats.is_it_an_xloader_format(res_dict.get('format'))
     is_datastore_active = res_dict.get('datastore_active', False)
-    if check_access:
-        user_has_access = toolkit.h.check_access('package_update', {'id':res_dict.get('package_id')})
+    user_has_access = not check_access or toolkit.h.check_access(
+        'package_update', {'id': res_dict.get('package_id')})
+    url_type = res_dict.get('url_type')
+    if url_type:
+        try:
+            is_supported_url_type = url_type not in toolkit.h.datastore_rw_resource_url_types()
+        except AttributeError:
+            is_supported_url_type = (url_type == 'upload')
     else:
-        user_has_access = True
-    try:
-        is_supported_url_type = res_dict.get('url_type') not in toolkit.h.datastore_rw_resource_url_types()
-    except AttributeError:
-        is_supported_url_type = (res_dict.get('url_type') == 'upload' or res_dict.get('url_type') == '')
+        is_supported_url_type = True
     return (is_supported_format or is_datastore_active) and user_has_access and is_supported_url_type

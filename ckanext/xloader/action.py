@@ -47,12 +47,12 @@ def xloader_submit(context, data_dict):
 
     :rtype: bool
     '''
+    p.toolkit.check_access('xloader_submit', context, data_dict)
+    custom_queue = data_dict.pop('queue', rq_jobs.DEFAULT_QUEUE_NAME)
     schema = context.get('schema', ckanext.xloader.schema.xloader_submit_schema())
     data_dict, errors = _validate(data_dict, schema, context)
     if errors:
         raise p.toolkit.ValidationError(errors)
-
-    p.toolkit.check_access('xloader_submit', context, data_dict)
 
     res_id = data_dict['resource_id']
     try:
@@ -145,15 +145,28 @@ def xloader_submit(context, data_dict):
             'original_url': resource_dict.get('url'),
         }
     }
-    timeout = config.get('ckanext.xloader.job_timeout', '3600')
+
+    if custom_queue != rq_jobs.DEFAULT_QUEUE_NAME:
+        # Don't automatically retry if it's a custom run
+        data['metadata']['tries'] = jobs.MAX_RETRIES
+
+    # Expand timeout for resources that have to be type-guessed
+    timeout = config.get(
+        'ckanext.xloader.job_timeout',
+        '3600' if utils.datastore_resource_exists(res_id) else '10800')
+    log.debug("Timeout for XLoading resource %s is %s", res_id, timeout)
+
     # (canada fork only): capability to use designated queues per resource
-    queue = rq_jobs.DEFAULT_QUEUE_NAME
     if p.toolkit.asbool(p.toolkit.config.get('ckanext.xloader.use_designated_queues')):
-        queue = res_id
+        custom_queue = res_id
+
+    # (canada fork only): custom job title
+    job_title = "Upload to DataStore"
+
     try:
         job = enqueue_job(
-            jobs.xloader_data_into_datastore, [data], rq_kwargs=dict(timeout=timeout),
-            title="Upload to DataStore", queue=queue
+            jobs.xloader_data_into_datastore, [data], queue=custom_queue,
+            title=job_title, rq_kwargs=dict(timeout=timeout)
         )
     except Exception:
         log.exception('Unable to enqueued xloader res_id=%s', res_id)

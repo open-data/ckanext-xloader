@@ -7,11 +7,9 @@ from ckan.plugins import toolkit
 
 from ckan.model.domain_object import DomainObjectOperation
 from ckan.model.resource import Resource
-
-import ckanapi
+from ckan.model.package import Package
 
 from . import action, auth, helpers as xloader_helpers, utils
-from .loader import fulltext_function_exists, get_write_engine
 from ckanext.xloader.utils import XLoaderFormats
 
 try:
@@ -73,36 +71,43 @@ class xloaderPlugin(plugins.SingletonPlugin):
     # IDomainObjectModification
 
     def notify(self, entity, operation):
-        # type: (ckan.model.Package|ckan.model.Resource, DomainObjectOperation) -> None
+        # type: (Package|Resource, DomainObjectOperation) -> None
         """
         Runs before_commit to database for Packages and Resources.
         We only want to check for changed Resources for this.
         We want to check if values have changed, namely the url and the format.
         See: ckan/model/modification.py.DomainObjectModificationExtension
         """
-        if operation != DomainObjectOperation.changed:
-            return
-        if not isinstance(entity, Resource):
-            return
-
-        if _should_remove_unsupported_resource_from_datastore(entity):
-            toolkit.enqueue_job(fn=_remove_unsupported_resource_from_datastore, args=[entity.id],
-                                title="Remove DataStore for Unsupported Format or Type")
-
-        # disable automatic submission of resource to xloader
-        # if validation is enabled or the url has not changed (canada fork only)
-        if 'validation' in toolkit.config.get('ckan.plugins') \
-        or not getattr(entity, 'url_changed', False):
+        if operation != DomainObjectOperation.changed \
+                or not isinstance(entity, Resource):
             return
 
         context = {
             "ignore_auth": True,
         }
         resource_dict = toolkit.get_action("resource_show")(
-            context, {
+            context,
+            {
                 "id": entity.id,
-            }
+            },
         )
+
+        # (canada fork only): custom job name
+        if _should_remove_unsupported_resource_from_datastore(resource_dict):
+            toolkit.enqueue_job(fn=_remove_unsupported_resource_from_datastore, args=[entity.id],
+                                title="Remove DataStore for Unsupported Format or Type")
+
+        # (canada fork only): disable automatic submission of resource to xloader
+        #                     if validation is enabled or the url has not changed
+        if 'validation' in toolkit.config.get('ckan.plugins') \
+        or not getattr(entity, 'url_changed', False):
+            return
+
+
+        if not getattr(entity, 'url_changed', False):
+            # do not submit to xloader if the url has not changed.
+            return
+
         self._submit_to_xloader(resource_dict)
 
     # IResourceController
@@ -222,17 +227,14 @@ class xloaderPlugin(plugins.SingletonPlugin):
         }
 
 
-def _should_remove_unsupported_resource_from_datastore(res_dict_or_obj):
+def _should_remove_unsupported_resource_from_datastore(res_dict):
     if not toolkit.asbool(toolkit.config.get('ckanext.xloader.clean_datastore_tables', False)):
         return False
-    if isinstance(res_dict_or_obj, Resource):
-        res_dict_or_obj = res_dict_or_obj.__dict__
-    return ((not XLoaderFormats.is_it_an_xloader_format(res_dict_or_obj.get('format', u''))
-                or res_dict_or_obj.get('url_changed', False))
-            and (res_dict_or_obj.get('url_type') == 'upload'
-                or res_dict_or_obj.get('url_type') == '')
-            and (res_dict_or_obj.get('datastore_active', False)
-                or res_dict_or_obj.get('extras', {}).get('datastore_active', False)))
+    return (not XLoaderFormats.is_it_an_xloader_format(res_dict.get('format', u''))
+            and (res_dict.get('url_type') == 'upload'
+                 or not res_dict.get('url_type'))
+            and (toolkit.asbool(res_dict.get('datastore_active', False))
+                 or toolkit.asbool(res_dict.get('extras', {}).get('datastore_active', False))))
 
 
 def _remove_unsupported_resource_from_datastore(resource_id):
@@ -242,23 +244,26 @@ def _remove_unsupported_resource_from_datastore(resource_id):
     Double check the resource format. Only supported Xloader formats should have datastore tables.
     If the resource format is not supported, we should delete the datastore tables.
     """
-    lc = ckanapi.LocalCKAN()
+    context = {"ignore_auth": True}
     try:
-        res = lc.action.resource_show(id=resource_id)
-        pkg = lc.action.package_show(id=res['package_id'])
+        res = toolkit.get_action('resource_show')(context, {"id": resource_id})
+        # (canada fork only): only remove datastore tables from dataset types
+        pkg = toolkit.get_action('package_show')(context, {"id": res['package_id']})
     except toolkit.ObjectNotFound:
-        log.error('Resource %s does not exist.' % res['id'])
+        log.error('Resource %s does not exist.', resource_id)
         return
 
-    # only remove datastore tables from dataset types (canada fork only)
+    # (canada fork only): only remove datastore tables from dataset types
     if pkg['type'] != 'dataset':
         return
 
     if _should_remove_unsupported_resource_from_datastore(res):
-        log.info('Unsupported resource format "{}". Deleting datastore tables for resource {}'
-            .format(res.get(u'format', u'').lower(), res['id']))
+        log.info('Unsupported resource format "%s". Deleting datastore tables for resource %s',
+                 res.get(u'format', u''), res['id'])
         try:
-            lc.action.datastore_delete(resource_id=res['id'], force=True)
-            log.info('Datastore table dropped for resource %s' % res['id'])
+            toolkit.get_action('datastore_delete')(context, {
+                "resource_id": res['id'],
+                "force": True})
+            log.info('Datastore table dropped for resource %s', res['id'])
         except toolkit.ObjectNotFound:
-            log.error('Datastore table for resource %s does not exist' % res['id'])
+            log.error('Datastore table for resource %s does not exist', res['id'])
