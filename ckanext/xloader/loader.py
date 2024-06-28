@@ -41,6 +41,8 @@ class CanadaStream(Stream):
         super(CanadaStream, self).__init__(source, *args, **kwargs)
         self.static_dialect = kwargs.get('static_dialect', None)
         self.logger = kwargs.get('logger', None)
+        self.decoded_format = dict(kwargs).get('format', dict(args).get('format', 'unknown'))
+
 
     @property
     def dialect(self):
@@ -52,7 +54,7 @@ class CanadaStream(Stream):
         """
         if self.static_dialect:
             if self.logger:
-                self.logger.info('Using Static Dialect for %s: %r', self.__format, self.static_dialect)
+                self.logger.info('Using Static Dialect for %s: %r', self.decoded_format, self.static_dialect)
             return self.static_dialect
         return super(CanadaStream, self).dialect
 
@@ -178,7 +180,9 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
     except TabulatorException:
         try:
             file_format = mimetype.lower().split('/')[-1]
-            with UnknownEncodingStream(csv_filepath, file_format, decoding_result) as stream:
+            with UnknownEncodingStream(csv_filepath, file_format, decoding_result, dialect=dialect,
+                                       force_encoding=bool(encoding),
+                                       logger=(logger if not has_logged_dialect else None)) as stream:
                 header_offset, headers = headers_guess(stream.sample)
                 has_logged_dialect = True
         except TabulatorException as e:
