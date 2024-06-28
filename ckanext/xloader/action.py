@@ -238,7 +238,7 @@ def xloader_hook(context, data_dict):
         :type finished_timestamp: timestamp
 
     '''
-
+    # (canada fork only): local callback
     metadata, status = _get_or_bust(data_dict, ['metadata', 'status'])
 
     res_id = _get_or_bust(metadata, 'resource_id')

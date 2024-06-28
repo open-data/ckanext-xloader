@@ -93,6 +93,7 @@ def xloader_data_into_datastore(input):
 
     logger = _get_logger(database_logging=False)
 
+    # (canada fork only): local callback
     callback_xloader_hook(job_dict=job_dict, logger=logger)
 
     job_id = get_current_job().id
@@ -149,9 +150,8 @@ def xloader_data_into_datastore(input):
         errored = True
     finally:
         # job_dict is defined in xloader_hook's docstring
-        is_saved_ok = callback_xloader_hook(result_url=input['result_url'],
-                                            api_key=input['api_key'],
-                                            job_dict=job_dict)
+        # (canada fork only): local callback
+        is_saved_ok = callback_xloader_hook(job_dict=job_dict, logger=logger)
         errored = errored or not is_saved_ok
     return 'error' if errored else None
 
@@ -228,6 +228,7 @@ def xloader_data_into_datastore_(input, job_dict, logger):
             resource_id=resource['id'], logger=logger)
         set_datastore_active(data, resource, logger)
         job_dict['status'] = 'running_but_viewable'
+        # (canada fork only): local callback
         callback_xloader_hook(job_dict=job_dict, logger=logger)
         logger.info('Data now available to users: %s', resource_ckan_url)
         loader.create_column_indexes(
@@ -488,6 +489,7 @@ def callback_xloader_hook(job_dict, logger):
 
     Returns whether it managed to call the xloader_hook action or not
     '''
+    # (canada fork only): local callback
     try:
         get_action('xloader_hook')(get_xloader_user_context(), job_dict)
     except Exception as e:
