@@ -82,13 +82,13 @@
 
   {% if status.status and status.task_info and show_table %}
     <h3>{{ _('Upload Log') }}</h3>
-    <ul class="activity">
+    <ul class="activity xloader-log">{# (canada fork only): BS3- fixes #}
       {% set items = status.task_info.logs %}
       {% set rows = rows or 50 %}
       {% set skipped_rows = (items | length) - (rows * 2) %}
       {% if skipped_rows > 1 %}
         <li class="item no-avatar">
-          <i class="fa icon fa-exclamation"></i>
+          <i class="fas icon fa-exclamation"></i>{# (canada fork only): BS3- support #}
           <p>
             {{ skipped_rows }} out of {{ items | length }} logs will be hidden.
             <br>
@@ -102,11 +102,11 @@
         {# Truncate very long loops, showing just the start and end #}
         {% if loop.index <= rows or loop.revindex <= rows
            or (loop.index == rows + 1 and loop.revindex == rows + 1) %}
-        {% set icon = 'ok' if item.level == 'INFO' else 'exclamation' %}
+        {% set icon = 'check' if item.level == 'INFO' else 'exclamation' %}{# (canada fork only): BS3- support #}
         {% set class = ' failure' if icon == 'exclamation' else ' success' %}
         {% set popover_content = 'test' %}
         <li class="item no-avatar{{ class }}">
-          <i class="fa icon fa-{{ icon }}"></i>
+          <i class="fas icon fa-{{ icon }}"></i>
           <p>
             {% for line in item.message.strip().split('\n') %}
               {{ line | urlize }}<br>
@@ -118,7 +118,7 @@
         </li>
         {% elif loop.index == rows + 1 %}
           <li class="item no-avatar">
-            <i class="fa icon fa-exclamation"></i>
+            <i class="fas icon fa-exclamation"></i>{# (canada fork only): BS3- support #}
             <p>
               Skipping {{ skipped_rows }} logs...
               <br>
@@ -130,7 +130,7 @@
         {% endif %}
       {% endfor %}
       <li class="item no-avatar">
-        <i class="fa icon fa-info"></i>
+        <i class="fas icon fa-info"></i>{# (canada fork only): BS3- support #}
         <p class="muted">{{ _('End of log') }}</p>
       </li>
     </ul>
