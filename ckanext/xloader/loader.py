@@ -306,7 +306,14 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
         except p.toolkit.ValidationError as e:
             if 'fields' in e.error_dict:
                 # e.g. {'message': None, 'error_dict': {'fields': [u'"***" is not a valid field name']}, '_error_summary': None}  # noqa
-                error_message = e.error_dict['fields'][0]
+                # (canada fork only): datastore sub-schema
+                if isinstance(e.error_dict['fields'][0], dict):
+                    error_message = ''
+                    for field_errors in e.error_dict['fields']:
+                        if field_errors and 'id' in field_errors:
+                            error_message += field_errors['id'][0]
+                else:
+                    error_message = e.error_dict['fields'][0]
                 raise LoaderError('Error with field definition: {}'
                                   .format(error_message))
             else:
