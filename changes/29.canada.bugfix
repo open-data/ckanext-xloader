@@ -1,0 +1,1 @@
+Always close temporary files during exception handling. Added exception handling for REDIS Job Queue timeouts.
