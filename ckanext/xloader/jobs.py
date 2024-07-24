@@ -12,7 +12,8 @@ import sys
 
 from six.moves.urllib.parse import urlsplit
 import requests
-from rq import get_current_job
+# (canada fork only): handle rq timeouts
+from rq import get_current_job, timeouts as rq_timeouts
 import sqlalchemy as sa
 
 from ckan.plugins.toolkit import get_action, asbool, ObjectNotFound, config
@@ -361,6 +362,9 @@ def _download_resource_data(resource, data, logger):
         response.close()
         data['datastore_contains_all_records_of_source_file'] = False
     except requests.exceptions.HTTPError as error:
+        # (canada fork only): always close tmp file on exceptions
+        #TODO: upstream contrib??
+        tmp_file.close()
         # status code error
         logger.debug('HTTP error: %s', error)
         raise HTTPError(
@@ -368,10 +372,16 @@ def _download_resource_data(resource, data, logger):
             "the data file", status_code=error.response.status_code,
             request_url=url, response=error)
     except requests.exceptions.Timeout:
+        # (canada fork only): always close tmp file on exceptions
+        #TODO: upstream contrib??
+        tmp_file.close()
         logger.warning('URL time out after %ss', DOWNLOAD_TIMEOUT)
         raise JobError('Connection timed out after {}s'.format(
                        DOWNLOAD_TIMEOUT))
     except requests.exceptions.RequestException as e:
+        # (canada fork only): always close tmp file on exceptions
+        #TODO: upstream contrib??
+        tmp_file.close()
         try:
             err_message = str(e.reason)
         except AttributeError:
@@ -380,6 +390,14 @@ def _download_resource_data(resource, data, logger):
         raise HTTPError(
             message=err_message, status_code=None,
             request_url=url, response=None)
+    except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
+        # (canada fork only): always close tmp file on exceptions
+        #TODO: upstream contrib??
+        tmp_file.close()
+        timeout = config.get('ckanext.xloader.job_timeout', '3600')
+        logger.warning('Job time out after %ss', timeout)
+        raise JobError('Job timed out after {}s'.format(
+                       timeout))
 
     logger.info('Downloaded ok - %s', printable_file_size(length))
     file_hash = m.hexdigest()
