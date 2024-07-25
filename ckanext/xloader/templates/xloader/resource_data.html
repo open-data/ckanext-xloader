@@ -41,10 +41,13 @@
   {% if status.error and status.error.message %}
     {% set show_table = false %}
     <div class="alert alert-danger">
-      <strong>{{ _('Upload error:') }}</strong> {{ status.error.message }}
+      {# (canada fork only): wrap errors in p; TODO: upstream contrib?? #}
+      <p><strong>{{ _('Upload error:') }}</strong> {{ status.error.message }}</p>
     </div>
   {% elif status.task_info and status.task_info.error %}
     <div class="alert alert-danger">
+      {# (canada fork only): wrap errors in p; TODO: upstream contrib?? #}
+      <p>
       {% if status.task_info.error is mapping %}
         <strong>{{ _('Error:') }}</strong> {{ status.task_info.error.message }}
         {% for error_key, error_value in status.task_info.error.items() %}
@@ -58,6 +61,7 @@
         <strong>{{ _('Error traceback:') }}</strong>
         <pre>{{ ''.join(status.task_info.error) }}</pre>
       {% endif %}
+      </p>
     </div>
   {% endif %}
 

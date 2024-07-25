@@ -244,14 +244,21 @@ def xloader_data_into_datastore_(input, job_dict, logger):
         validation_options = _get_validation_options()
         try:
             loader.load_table(tmp_file.name,
-                              resource_id=resource['id'],
-                              mimetype=resource.get('format'),
-                              # (canada fork only): adds in dialect argument to pass static/resource dialect
-                              dialect=validation_options.get('dialect', {})
+                            resource_id=resource['id'],
+                            mimetype=resource.get('format'),
+                            # (canada fork only): adds in dialect argument to pass static/resource dialect
+                            dialect=validation_options.get('dialect', {})
                                 .get(resource.get('format', '').lower(), None),
-                              # (canada fork only): adds in encoding argument to pass static/resource encoding
-                              encoding=validation_options.get('encoding', None),
-                              logger=logger)
+                            # (canada fork only): adds in encoding argument to pass static/resource encoding
+                            encoding=validation_options.get('encoding', None),
+                            logger=logger)
+        except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
+            # (canada fork only): always close tmp file on exceptions
+            #TODO: upstream contrib??
+            tmp_file.close()
+            timeout = config.get('ckanext.xloader.job_timeout', '3600')
+            logger.warning('Job time out after %ss', timeout)
+            raise JobError('Job timed out after {}s'.format(timeout))
         except JobError as e:
             logger.error('Error during tabulator load: %s', e)
             raise
@@ -279,6 +286,13 @@ def xloader_data_into_datastore_(input, job_dict, logger):
         else:
             try:
                 direct_load()
+            except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
+                # (canada fork only): always close tmp file on exceptions
+                #TODO: upstream contrib??
+                tmp_file.close()
+                timeout = config.get('ckanext.xloader.job_timeout', '3600')
+                logger.warning('Job time out after %ss', timeout)
+                raise JobError('Job timed out after {}s'.format(timeout))
             except JobError as e:
                 logger.warning('Load using COPY failed: %s', e)
                 just_load_with_direct_load = asbool(config.get(
@@ -438,8 +452,7 @@ def _download_resource_data(resource, data, logger):
         tmp_file.close()
         timeout = config.get('ckanext.xloader.job_timeout', '3600')
         logger.warning('Job time out after %ss', timeout)
-        raise JobError('Job timed out after {}s'.format(
-                       timeout))
+        raise JobError('Job timed out after {}s'.format(timeout))
 
     logger.info('Downloaded ok - %s', printable_file_size(length))
     file_hash = m.hexdigest()
