@@ -12,6 +12,10 @@ from ckan.model.package import Package
 from . import action, auth, helpers as xloader_helpers, utils
 from ckanext.xloader.utils import XLoaderFormats
 
+# (canada fork only): capability to use designated queues per resource, queue_name
+#TODO: upstream contrib queue_name
+from ckan.lib.jobs import DEFAULT_QUEUE_NAME
+
 try:
     config_declarations = toolkit.blanket.config_declarations
 except AttributeError:
@@ -94,8 +98,14 @@ class xloaderPlugin(plugins.SingletonPlugin):
 
         # (canada fork only): custom job name
         if _should_remove_unsupported_resource_from_datastore(resource_dict):
+            # (canada fork only): capability to use designated queues per resource, queue_name
+            #TODO: upstream contrib queue_name
+            queue = toolkit.config.get('ckanext.xloader.queue_name', DEFAULT_QUEUE_NAME)
+            if toolkit.asbool(toolkit.config.get('ckanext.xloader.use_designated_queues')):
+                queue = entity.id
             toolkit.enqueue_job(fn=_remove_unsupported_resource_from_datastore, args=[entity.id],
-                                title="Remove DataStore for Unsupported Format or Type")
+                                title="Remove DataStore for Unsupported Format or Type",
+                                queue=queue)
 
         # (canada fork only): disable automatic submission of resource to xloader
         #                     if validation is enabled or the url has not changed
