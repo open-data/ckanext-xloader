@@ -337,7 +337,7 @@ def _download_resource_data(resource, data, logger):
     scheme = url_parts.scheme
 
     # (canada fork only): uploaded and white listed only
-    allowed_domains = config.get('ckanext.canada.datastore_source_domain_white_list', '').split()
+    allowed_domains = config.get('ckanext.canada.datastore_source_domain_allow_list', [])
     if (resource.get('url_type') != 'upload' and url_parts.netloc not in allowed_domains):
         raise JobError('Only uploaded resources and white listed sources can be uploaded to the DataStore.')
 
