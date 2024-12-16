@@ -336,17 +336,18 @@ def _download_resource_data(resource, data, logger):
     url_parts = urlsplit(url)
     scheme = url_parts.scheme
 
-    # check if it is an uploaded file
-    domain = url_parts.netloc
-    site_url = config.get('ckan.site_url')
-    if resource.get('url_type') != 'upload' and domain != site_url:
-        raise JobError('Only uploaded files can be added to the Data Store.')
+    # (canada fork only): uploaded and white listed only
+    allowed_domains = config.get('ckanext.canada.datastore_source_domain_allow_list', [])
+    if (resource.get('url_type') != 'upload' and url_parts.netloc not in allowed_domains):
+        raise JobError('Only uploaded resources and white listed sources can be uploaded to the DataStore.')
 
     # get url from uploader (canada fork only)
     #TODO: upstream contribution??
-    upload = get_resource_uploader(resource)
-    url = upload.get_path(resource['id'])
-    logger.info('Resource %s using uploader: %s', resource['id'], type(upload).__name__)
+    if resource.get('url_type') == 'upload':
+        upload = get_resource_uploader(resource)
+        url = upload.get_path(resource['id'])
+        logger.info('Resource %s using uploader: %s', resource['id'], type(upload).__name__)
+
 
     # check scheme
     url_parts = urlsplit(url)
