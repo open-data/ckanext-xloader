@@ -252,6 +252,12 @@ def xloader_data_into_datastore_(input, job_dict, logger):
                             # (canada fork only): adds in encoding argument to pass static/resource encoding
                             encoding=validation_options.get('encoding', None),
                             logger=logger)
+        except errors.QueryCanceled as e:  # (canada fork only): handle db timeouts
+            # (canada fork only): always close tmp file on exceptions
+            #TODO: upstream contrib??
+            tmp_file.close()
+            logger.warning('XLoader job ran into a database query timeout')
+            raise JobError('XLoader job ran into a database query timeout')
         except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
             # (canada fork only): always close tmp file on exceptions
             #TODO: upstream contrib??
@@ -286,6 +292,12 @@ def xloader_data_into_datastore_(input, job_dict, logger):
         else:
             try:
                 direct_load()
+            except errors.QueryCanceled as e:  # (canada fork only): handle db timeouts
+                # (canada fork only): always close tmp file on exceptions
+                #TODO: upstream contrib??
+                tmp_file.close()
+                logger.warning('XLoader job ran into a database query timeout')
+                raise JobError('XLoader job ran into a database query timeout')
             except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
                 # (canada fork only): always close tmp file on exceptions
                 #TODO: upstream contrib??
