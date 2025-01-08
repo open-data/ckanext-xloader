@@ -1,0 +1,1 @@
+Handled database timeout exceptions to close temporary files.
