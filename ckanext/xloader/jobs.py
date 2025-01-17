@@ -326,8 +326,10 @@ def xloader_data_into_datastore_(input, job_dict, logger):
         logger.warning('Loading excerpt for this format not supported.')
         logger.error('Loading file raised an error: %s', e)
         raise JobError('Loading file raised an error: {}'.format(e))
-
-    tmp_file.close()
+    finally:
+        # (canada fork only): put close into finally
+        # TODO: upstream contribution??
+        tmp_file.close()
 
     logger.info('Express Load completed')
 
