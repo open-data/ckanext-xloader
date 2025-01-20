@@ -1,1 +1,1 @@
-Use `datastore_run_triggers` to create the FTS index.
+Limit the FTS index to `ckanext.xloader.max_fts_rows` (default: `100,000` rows)

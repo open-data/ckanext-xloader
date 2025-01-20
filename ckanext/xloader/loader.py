@@ -391,15 +391,12 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
 
     logger.info('...copying done')
 
-    logger.info('Creating search index...')
     _populate_fulltext(connection, resource_id, fields=fields, logger=logger)
-    logger.info('...search index created')
 
     return fields
 
 
 def create_column_indexes(fields, resource_id, logger):
-    logger.info('Creating column indexes (a speed optimization for queries)...')
     from ckan import model
     context = {'model': model, 'ignore_auth': True}
     data_dict = dict(
@@ -409,14 +406,20 @@ def create_column_indexes(fields, resource_id, logger):
     engine = get_write_engine()
     connection = context['connection'] = engine.connect()
 
-    # (canada fork only): use datastore_run_triggers
-    _enable_fulltext_trigger(connection, resource_id)
-    logger.info('Running DataStore triggers...')
-    rowcount = p.toolkit.get_action('datastore_run_triggers')(
-        {'ignore_auth': True}, {'resource_id': resource_id})
-    logger.info('Created FTS index for {} rows...'.format(rowcount))
-
-    logger.info('...column indexes created.')
+    # (canada fork only): max rows for a FTS index
+    # TODO: upstream contrib??
+    result = p.toolkit.get_action('datastore_search')(
+        {'ignore_auth': True}, {'resource_id': resource_id, 'limit': 0})
+    record_count = result.get('total', 0)
+    max_rows_for_fts = int(p.toolkit.config.get('ckanext.xloader.max_fts_rows', 100000))
+    if record_count > max_rows_for_fts:
+        logger.info('Skipping FTS index ({} records more than {} maximum for FTS index)...'.format(
+            record_count, max_rows_for_fts))
+    else:
+        logger.info('Creating column indexes (a speed optimization for queries)...')
+        create_indexes(context, data_dict)
+        _enable_fulltext_trigger(connection, resource_id)
+        logger.info('...column indexes created.')
 
 
 def load_table(table_filepath, resource_id, mimetype='text/csv', dialect=None, encoding=None, logger=None):
@@ -690,14 +693,36 @@ def _populate_fulltext(connection, resource_id, fields, logger):
     fields: list of dicts giving the each column's 'id' (name) and 'type'
             (text/numeric/timestamp)
     '''
-    # (canada fork only): use datastore_run_triggers
-    logger.info('Running DataStore triggers...')
-    _enable_fulltext_trigger(connection, resource_id)
-    rowcount = p.toolkit.get_action('datastore_run_triggers')(
-        {'ignore_auth': True}, {'resource_id': resource_id})
-    logger.info('Created FTS index for {} rows...'.format(rowcount))
-
-    logger.info('...column indexes created.')
+    # (canada fork only): max rows for a FTS index
+    # TODO: upstream contrib??
+    result = p.toolkit.get_action('datastore_search')(
+        {'ignore_auth': True}, {'resource_id': resource_id, 'limit': 0})
+    record_count = result.get('total', 0)
+    max_rows_for_fts = int(p.toolkit.config.get('ckanext.xloader.max_fts_rows', 100000))
+    if record_count > max_rows_for_fts:
+        logger.info('Skipping FTS index ({} records more than {} maximum for FTS index)...'.format(
+            record_count, max_rows_for_fts))
+    else:
+        logger.info('Creating search index...')
+        sql = \
+            u'''
+            UPDATE {table}
+            SET _full_text = to_tsvector({cols});
+            '''.format(
+                # coalesce copes with blank cells
+                table=identifier(resource_id),
+                cols=" || ' ' || ".join(
+                    'coalesce({}, \'\')'.format(
+                        identifier(field['id'])
+                        + ('::text' if field['type'] != 'text' else '')
+                    )
+                    for field in fields
+                    if not field['id'].startswith('_')
+                )
+            )
+        connection.execute(sql)
+        _enable_fulltext_trigger(connection, resource_id)
+        logger.info('...search index created')
 
 
 def calculate_record_count(resource_id, logger):
