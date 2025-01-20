@@ -392,7 +392,7 @@ def load_csv(csv_filepath, resource_id, mimetype='text/csv', dialect=None, encod
     logger.info('...copying done')
 
     logger.info('Creating search index...')
-    _populate_fulltext(connection, resource_id, fields=fields)
+    _populate_fulltext(connection, resource_id, fields=fields, logger=logger)
     logger.info('...search index created')
 
     return fields
@@ -409,8 +409,12 @@ def create_column_indexes(fields, resource_id, logger):
     engine = get_write_engine()
     connection = context['connection'] = engine.connect()
 
-    create_indexes(context, data_dict)
+    # (canada fork only): use datastore_run_triggers
     _enable_fulltext_trigger(connection, resource_id)
+    logger.info('Running DataStore triggers...')
+    rowcount = p.toolkit.get_action('datastore_run_triggers')(
+        {'ignore_auth': True}, {'resource_id': resource_id})
+    logger.info('Created FTS index for {} rows...'.format(rowcount))
 
     logger.info('...column indexes created.')
 
@@ -676,7 +680,7 @@ def _enable_fulltext_trigger(connection, resource_id):
                        .format(table=identifier(resource_id)))
 
 
-def _populate_fulltext(connection, resource_id, fields):
+def _populate_fulltext(connection, resource_id, fields, logger):
     '''Populates the _full_text column. i.e. the same as datastore_run_triggers
     but it runs in 1/9 of the time.
 
@@ -686,23 +690,14 @@ def _populate_fulltext(connection, resource_id, fields):
     fields: list of dicts giving the each column's 'id' (name) and 'type'
             (text/numeric/timestamp)
     '''
-    sql = \
-        u'''
-        UPDATE {table}
-        SET _full_text = to_tsvector({cols});
-        '''.format(
-            # coalesce copes with blank cells
-            table=identifier(resource_id),
-            cols=" || ' ' || ".join(
-                'coalesce({}, \'\')'.format(
-                    identifier(field['id'])
-                    + ('::text' if field['type'] != 'text' else '')
-                )
-                for field in fields
-                if not field['id'].startswith('_')
-            )
-        )
-    connection.execute(sql)
+    # (canada fork only): use datastore_run_triggers
+    logger.info('Running DataStore triggers...')
+    _enable_fulltext_trigger(connection, resource_id)
+    rowcount = p.toolkit.get_action('datastore_run_triggers')(
+        {'ignore_auth': True}, {'resource_id': resource_id})
+    logger.info('Created FTS index for {} rows...'.format(rowcount))
+
+    logger.info('...column indexes created.')
 
 
 def calculate_record_count(resource_id, logger):
