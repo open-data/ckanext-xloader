@@ -4,6 +4,7 @@ try:
 except ImportError:
     import mock
 
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import NotAuthorized
 from ckan.tests import helpers, factories
 

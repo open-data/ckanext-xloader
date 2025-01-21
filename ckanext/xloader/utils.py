@@ -11,6 +11,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 import ckan.plugins as p
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import config
 
 from .job_exceptions import JobError

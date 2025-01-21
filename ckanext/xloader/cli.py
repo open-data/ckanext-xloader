@@ -5,6 +5,7 @@ import click
 from ckanext.xloader.command import XloaderCmd
 # (canada fork only): add db init
 from ckanext.xloader.db import init
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import config
 
 # Click commands for CKAN 2.9 and above

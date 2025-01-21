@@ -19,6 +19,7 @@ from rq import get_current_job, timeouts as rq_timeouts
 import sqlalchemy as sa
 
 import ckan.lib.jobs as rq_jobs
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import get_action, asbool, enqueue_job, ObjectNotFound, config, asbool
 from ckan.lib.uploader import get_resource_uploader
 
