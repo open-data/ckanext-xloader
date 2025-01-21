@@ -411,7 +411,7 @@ def create_column_indexes(fields, resource_id, logger):
     result = p.toolkit.get_action('datastore_search')(
         {'ignore_auth': True}, {'resource_id': resource_id, 'limit': 0})
     record_count = result.get('total', 0)
-    max_rows_for_fts = int(p.toolkit.config.get('ckanext.xloader.max_fts_rows', 100000))
+    max_rows_for_fts = int(p.toolkit.config.get('ckanext.canada.max_fts_rows', 100000))
     if record_count > max_rows_for_fts:
         logger.info('Skipping FTS index ({} records more than {} maximum for FTS index)...'.format(
             record_count, max_rows_for_fts))
@@ -698,7 +698,7 @@ def _populate_fulltext(connection, resource_id, fields, logger):
     result = p.toolkit.get_action('datastore_search')(
         {'ignore_auth': True}, {'resource_id': resource_id, 'limit': 0})
     record_count = result.get('total', 0)
-    max_rows_for_fts = int(p.toolkit.config.get('ckanext.xloader.max_fts_rows', 100000))
+    max_rows_for_fts = int(p.toolkit.config.get('ckanext.canada.max_fts_rows', 100000))
     if record_count > max_rows_for_fts:
         logger.info('Skipping FTS index ({} records more than {} maximum for FTS index)...'.format(
             record_count, max_rows_for_fts))
