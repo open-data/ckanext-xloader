@@ -4,9 +4,11 @@ from decimal import Decimal, InvalidOperation
 import re
 import six
 
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import asbool
 from dateutil.parser import isoparser, parser, ParserError
 
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import config
 
 from tabulator.parsers.csv import CSVParser

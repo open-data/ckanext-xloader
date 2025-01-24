@@ -1,5 +1,6 @@
 from flask import Blueprint
 
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import _, h, g, render, request, abort, NotAuthorized, get_action, ObjectNotFound
 
 import ckanext.xloader.utils as utils

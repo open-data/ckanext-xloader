@@ -21,6 +21,7 @@ from .job_exceptions import FileCouldNotBeLoadedError, LoaderError
 from .parser import CSV_SAMPLE_LINES, TypeConverter, CanadaCSVParser
 from .utils import datastore_resource_exists, headers_guess, type_guess
 
+# (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import config
 
 import ckanext.datastore.backend.postgres as datastore_db

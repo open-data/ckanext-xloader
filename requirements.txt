@@ -1,4 +1,5 @@
-ckantoolkit
+# (canada fork only): ckan.plugins.toolkit
+# ckantoolkit
 requests[security]>=2.11.1
 six>=1.12.0
 tabulator==1.53.5

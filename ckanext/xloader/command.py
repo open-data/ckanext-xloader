@@ -2,6 +2,7 @@
 
 import sys
 import logging
+# (canada fork only): ckan.plugins.toolkit
 import ckan.plugins.toolkit as tk
 
 from ckanext.xloader.jobs import xloader_data_into_datastore_
