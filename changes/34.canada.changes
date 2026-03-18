@@ -1,0 +1,1 @@
+Explicitly log Database (and other) Exceptions in the `delete_datastore_table` view function via the `datastore_delete` action. This fixes an issue with ambiguous stacktraces only logging `TypeError` for view function return instead of the parent Exception.

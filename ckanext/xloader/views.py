@@ -1,4 +1,6 @@
 from flask import Blueprint
+# (canada fork only): catch all exceptions for explicit logging
+from logging import getLogger
 
 # (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import _, h, g, render, request, abort, NotAuthorized, get_action, ObjectNotFound
@@ -7,6 +9,8 @@ import ckanext.xloader.utils as utils
 
 
 xloader = Blueprint("xloader", __name__)
+# (canada fork only): catch all exceptions for explicit logging
+log = getLogger(__name__)
 
 
 def get_blueprints():
@@ -47,6 +51,12 @@ def delete_datastore_table(id, resource_id):
                 "force": True})
         except NotAuthorized:
             return abort(403, _(u'Unauthorized to delete resource %s') % resource_id)
+        # (canada fork only): catch all exceptions for explicit logging
+        #                     datastore_delete can raise various DB exceptions
+        except Exception as e:
+            log.error('Failed to delete DataStore table '
+                      'for Resource %s with errors:\n\n%s' % (resource_id, e))
+            return abort(500)
 
         h.flash_notice(_(u'DataStore and Data Dictionary deleted for resource %s') % resource_id)
 
