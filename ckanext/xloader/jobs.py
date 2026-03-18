@@ -22,6 +22,8 @@ import ckan.lib.jobs as rq_jobs
 # (canada fork only): ckan.plugins.toolkit
 from ckan.plugins.toolkit import get_action, asbool, enqueue_job, ObjectNotFound, config, asbool
 from ckan.lib.uploader import get_resource_uploader
+# (canada fork only): add User-Agent header
+from ckan.lib.helpers import ckan_version
 
 from . import db, loader
 from .job_exceptions import JobError, HTTPError, DataTooBigError, FileCouldNotBeLoadedError
@@ -379,7 +381,8 @@ def _download_resource_data(resource, data, logger):
     m = hashlib.md5()
     cl = None
     try:
-        headers = {}
+        # (canada fork only): add User-Agent header
+        headers = {'User-Agent': 'CKAN/{}'.format(ckan_version())}
         if resource.get('url_type') == 'upload':
             # Add a constantly changing parameter to bypass URL caching.
             # If we're running XLoader, then either the resource has
