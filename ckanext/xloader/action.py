@@ -6,6 +6,10 @@ import datetime
 import json
 import logging
 
+# (canada fork only): non-qualified res_url for lang domain support
+from urllib.parse import urlparse
+from ckan.plugins.toolkit import request
+
 import ckan.lib.jobs as rq_jobs
 import ckan.lib.navl.dictization_functions
 from ckan.logic import side_effect_free
@@ -134,15 +138,26 @@ def xloader_submit(context, data_dict):
         task
     )
 
+    # (canada fork only): non-qualified res_url for lang domain support
+    #                     only for upload types.
+    original_url = resource_dict.get('url')
+    if resource_dict.get('url_type') == 'upload':
+        original_url_parts = urlparse(original_url)
+        if original_url_parts.netloc:
+            original_url = original_url.replace('%s://' % str(original_url_parts.scheme), '')
+            original_url = original_url.replace(str(original_url_parts.netloc), '')
+
     data = {
         'job_type': 'xloader_to_datastore',
         'metadata': {
             'ignore_hash': data_dict.get('ignore_hash', False),
-            'ckan_url': config['ckan.site_url'],
+            # (canada fork only): do not store site_url
+            'ckan_url': None,
             'resource_id': res_id,
             'set_url_type': data_dict.get('set_url_type', False),
             'task_created': task['last_updated'],
-            'original_url': resource_dict.get('url'),
+            # (canada fork only): non-qualified res_url for lang domain support
+            'original_url': original_url,
         }
     }
 

@@ -115,7 +115,8 @@ class XloaderCmd:
             'ignore_hash': True,
         }
         if sync:
-            data_dict['ckan_url'] = tk.config.get('ckan.site_url')
+            # (canada fork only): do not store site_url
+            data_dict['ckan_url'] = None
             input_dict = {
                 'metadata': data_dict,
                 'api_key': 'TODO'
