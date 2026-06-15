@@ -8,7 +8,7 @@ import logging
 
 # (canada fork only): non-qualified res_url for lang domain support
 # TODO: upstream contrib!!
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 from ckan.plugins.toolkit import request
 
 import ckan.lib.jobs as rq_jobs
