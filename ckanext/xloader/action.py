@@ -7,7 +7,8 @@ import json
 import logging
 
 # (canada fork only): non-qualified res_url for lang domain support
-from urllib.parse import urlparse
+# TODO: upstream contrib!!
+from urllib.parse import urlparse, urlunparse
 from ckan.plugins.toolkit import request
 
 import ckan.lib.jobs as rq_jobs
@@ -140,12 +141,12 @@ def xloader_submit(context, data_dict):
 
     # (canada fork only): non-qualified res_url for lang domain support
     #                     only for upload types.
+    # TODO: upstream contrib!!
     original_url = resource_dict.get('url')
     if resource_dict.get('url_type') == 'upload':
         original_url_parts = urlparse(original_url)
         if original_url_parts.netloc:
-            original_url = original_url.replace('%s://' % str(original_url_parts.scheme), '')
-            original_url = original_url.replace(str(original_url_parts.netloc), '')
+            original_url = original_url_parts._replace(scheme='', netloc='').geturl()
 
     data = {
         'job_type': 'xloader_to_datastore',
