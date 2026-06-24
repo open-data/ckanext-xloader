@@ -1,0 +1,1 @@
+Added `--resource-id` option to the `xloader submit` command. Fixed various TypeErrors and missing metadata in the CLI methods.

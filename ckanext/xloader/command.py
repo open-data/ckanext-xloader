@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+# (canada fork only): fix TypeErrors
+# TODO: upstream contrib??
+import datetime
+from urllib.parse import urlparse
+
 import sys
 import logging
 # (canada fork only): ckan.plugins.toolkit
@@ -121,8 +126,31 @@ class XloaderCmd:
                 'metadata': data_dict,
                 'api_key': 'TODO'
             }
+            # (canada fork only): non-qualified res_url for lang domain support
+            #                     only for upload types.
+            # TODO: upstream contrib!!
+            original_url = resource.get('url')
+            if resource.get('url_type') == 'upload':
+                original_url_parts = urlparse(original_url)
+                if original_url_parts.netloc:
+                    original_url = original_url_parts._replace(scheme='', netloc='').geturl()
+            # (canada fork only): fix TypeErrors
+            # TODO: upstream contrib??
+            job_dict = {
+                'status': 'complete',
+                'metadata': {
+                    'ignore_hash': True,
+                    # (canada fork only): do not store site_url
+                    'ckan_url': None,
+                    'resource_id': resource['id'],
+                    'set_url_type': data_dict.get('set_url_type', False),
+                    'task_created': str(datetime.datetime.utcnow()),
+                    # (canada fork only): non-qualified res_url for lang domain support
+                    'original_url': original_url,
+                }
+            }
             logger = logging.getLogger('ckanext.xloader.cli')
-            xloader_data_into_datastore_(input_dict, None, logger)
+            xloader_data_into_datastore_(input_dict, job_dict, logger)
         else:
             if queue:
                 data_dict['queue'] = queue
