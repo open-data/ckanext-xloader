@@ -394,7 +394,10 @@ def _download_resource_data(resource, data, logger):
             # changed, or something went wrong and we want a clean start.
             # Either way, we don't want a cached file.
             download_url = url_parts._replace(
-                query='{}&nonce={}'.format(url_parts.query, time.time())
+                query='{}&nonce={}'.format(url_parts.query, time.time()),
+                # (canada fork only): allow for internal network proxies to work
+                # TODO: upstream contrib??
+                netloc=config.get('ckanext.xloader.download_proxy', url_parts.netloc)
             ).geturl()
         else:
             download_url = url
@@ -428,7 +431,9 @@ def _download_resource_data(resource, data, logger):
                     'DataStore.'
                     .format(max_lines=MAX_EXCERPT_LINES))
         tmp_file = get_tmp_file(url)
-        response = get_response(url, headers)
+        # (canada fork only): fix download URI for upload types
+        # TODO: upstream contrib??
+        response = get_response(download_url, headers)
         length = 0
         line_count = 0
         m = hashlib.md5()
