@@ -147,6 +147,11 @@ def xloader_submit(context, data_dict):
         original_url_parts = urlparse(original_url)
         if original_url_parts.netloc:
             original_url = original_url_parts._replace(scheme='', netloc='').geturl()
+            for _lang in config.get('ckan.locales_offered', ['en']):
+                if original_url.startswith(f'/{_lang}/'):
+                    while original_url.startswith(f'/{_lang}/'):
+                        original_url = original_url[len(f'/{_lang}'):]
+                    break
 
     data = {
         'job_type': 'xloader_to_datastore',
@@ -296,6 +301,13 @@ def xloader_hook(context, data_dict):
                 'package': dataset_dict,
                 'create_datastore_views': True,
             })
+
+        # (canada fork only): non-qualified res_url for lang domain support
+        #                     only for upload types.
+        # TODO: upstream contrib!!
+        if resource_dict.get('url_type') == 'upload':
+            resource_dict = p.toolkit.get_action('resource_show')(
+                dict(context, for_index=True), {'id': res_id})
 
         # Check if the uploaded file has been modified in the meantime
         if (resource_dict.get('last_modified')
