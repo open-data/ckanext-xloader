@@ -173,7 +173,7 @@ def xloader_submit(context, data_dict):
     log.debug("Timeout for XLoading resource %s is %s", res_id, timeout)
 
     # (canada fork only): capability to use designated queues per resource, queue_name
-    #TODO: upstream contrib queue_name
+    # TODO: upstream contrib queue_name
     custom_queue = p.toolkit.config.get('ckanext.xloader.queue_name', rq_jobs.DEFAULT_QUEUE_NAME)
     if p.toolkit.asbool(p.toolkit.config.get('ckanext.xloader.use_designated_queues')):
         custom_queue = res_id

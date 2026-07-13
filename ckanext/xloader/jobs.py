@@ -24,6 +24,9 @@ from ckan.plugins.toolkit import get_action, asbool, enqueue_job, ObjectNotFound
 from ckan.lib.uploader import get_resource_uploader
 # (canada fork only): add User-Agent header
 from ckan.lib.helpers import ckan_version
+# get url from uploader (canada fork only)
+# TODO: upstream contribution??
+import ckan.lib.uploader as uploader
 
 from . import db, loader
 from .job_exceptions import JobError, HTTPError, DataTooBigError, FileCouldNotBeLoadedError
@@ -257,13 +260,13 @@ def xloader_data_into_datastore_(input, job_dict, logger):
                             logger=logger)
         except errors.QueryCanceled as e:  # (canada fork only): handle db timeouts
             # (canada fork only): always close tmp file on exceptions
-            #TODO: upstream contrib??
+            # TODO: upstream contrib??
             tmp_file.close()
             logger.warning('XLoader job ran into a database query timeout')
             raise JobError('XLoader job ran into a database query timeout')
         except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
             # (canada fork only): always close tmp file on exceptions
-            #TODO: upstream contrib??
+            # TODO: upstream contrib??
             tmp_file.close()
             timeout = config.get('ckanext.xloader.job_timeout', '3600')
             logger.warning('Job time out after %ss', timeout)
@@ -297,13 +300,13 @@ def xloader_data_into_datastore_(input, job_dict, logger):
                 direct_load()
             except errors.QueryCanceled as e:  # (canada fork only): handle db timeouts
                 # (canada fork only): always close tmp file on exceptions
-                #TODO: upstream contrib??
+                # TODO: upstream contrib??
                 tmp_file.close()
                 logger.warning('XLoader job ran into a database query timeout')
                 raise JobError('XLoader job ran into a database query timeout')
             except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
                 # (canada fork only): always close tmp file on exceptions
-                #TODO: upstream contrib??
+                # TODO: upstream contrib??
                 tmp_file.close()
                 timeout = config.get('ckanext.xloader.job_timeout', '3600')
                 logger.warning('Job time out after %ss', timeout)
@@ -359,16 +362,18 @@ def _download_resource_data(resource, data, logger):
         raise JobError('Only uploaded resources and allowed domain sources can be uploaded to the DataStore.')
 
     # get url from uploader (canada fork only)
-    #TODO: upstream contribution??
+    # TODO: upstream contribution??
     if resource.get('url_type') == 'upload':
         upload = get_resource_uploader(resource)
-        url = upload.get_path(resource['id'])
+        if not isinstance(upload, uploader.ResourceUpload):
+            # default file server upload should use resource URI
+            url = upload.get_path(resource['id'])
         logger.info('Resource %s using uploader: %s', resource['id'], type(upload).__name__)
-
 
     # check scheme
     url_parts = urlsplit(url)
     scheme = url_parts.scheme
+
     if scheme not in ('http', 'https', 'ftp'):
         raise JobError(
             'Only http, https, and ftp resources may be fetched.'
@@ -438,7 +443,7 @@ def _download_resource_data(resource, data, logger):
         data['datastore_contains_all_records_of_source_file'] = False
     except requests.exceptions.HTTPError as error:
         # (canada fork only): always close tmp file on exceptions
-        #TODO: upstream contrib??
+        # TODO: upstream contrib??
         tmp_file.close()
         # status code error
         logger.debug('HTTP error: %s', error)
@@ -448,14 +453,14 @@ def _download_resource_data(resource, data, logger):
             request_url=url, response=error)
     except requests.exceptions.Timeout:
         # (canada fork only): always close tmp file on exceptions
-        #TODO: upstream contrib??
+        # TODO: upstream contrib??
         tmp_file.close()
         logger.warning('URL time out after %ss', DOWNLOAD_TIMEOUT)
         raise JobError('Connection timed out after {}s'.format(
                        DOWNLOAD_TIMEOUT))
     except requests.exceptions.RequestException as e:
         # (canada fork only): always close tmp file on exceptions
-        #TODO: upstream contrib??
+        # TODO: upstream contrib??
         tmp_file.close()
         try:
             err_message = str(e.reason)
@@ -467,7 +472,7 @@ def _download_resource_data(resource, data, logger):
             request_url=url, response=None)
     except rq_timeouts.JobTimeoutException as e:  # (canada fork only): handle rq timeouts
         # (canada fork only): always close tmp file on exceptions
-        #TODO: upstream contrib??
+        # TODO: upstream contrib??
         tmp_file.close()
         timeout = config.get('ckanext.xloader.job_timeout', '3600')
         logger.warning('Job time out after %ss', timeout)
