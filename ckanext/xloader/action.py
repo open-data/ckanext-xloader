@@ -6,6 +6,11 @@ import datetime
 import json
 import logging
 
+# (canada fork only): non-qualified res_url for lang domain support
+# TODO: upstream contrib!!
+from urllib.parse import urlparse
+from ckan.plugins.toolkit import request
+
 import ckan.lib.jobs as rq_jobs
 import ckan.lib.navl.dictization_functions
 from ckan.logic import side_effect_free
@@ -134,15 +139,31 @@ def xloader_submit(context, data_dict):
         task
     )
 
+    # (canada fork only): non-qualified res_url for lang domain support
+    #                     only for upload types.
+    # TODO: upstream contrib!!
+    original_url = resource_dict.get('url')
+    if resource_dict.get('url_type') == 'upload':
+        original_url_parts = urlparse(original_url)
+        if original_url_parts.netloc:
+            original_url = original_url_parts._replace(scheme='', netloc='').geturl()
+            for _lang in config.get('ckan.locales_offered', ['en']):
+                if original_url.startswith(f'/{_lang}/'):
+                    while original_url.startswith(f'/{_lang}/'):
+                        original_url = original_url[len(f'/{_lang}'):]
+                    break
+
     data = {
         'job_type': 'xloader_to_datastore',
         'metadata': {
             'ignore_hash': data_dict.get('ignore_hash', False),
-            'ckan_url': config['ckan.site_url'],
+            # (canada fork only): do not store site_url
+            'ckan_url': None,
             'resource_id': res_id,
             'set_url_type': data_dict.get('set_url_type', False),
             'task_created': task['last_updated'],
-            'original_url': resource_dict.get('url'),
+            # (canada fork only): non-qualified res_url for lang domain support
+            'original_url': original_url,
         }
     }
 
@@ -157,7 +178,7 @@ def xloader_submit(context, data_dict):
     log.debug("Timeout for XLoading resource %s is %s", res_id, timeout)
 
     # (canada fork only): capability to use designated queues per resource, queue_name
-    #TODO: upstream contrib queue_name
+    # TODO: upstream contrib queue_name
     custom_queue = p.toolkit.config.get('ckanext.xloader.queue_name', rq_jobs.DEFAULT_QUEUE_NAME)
     if p.toolkit.asbool(p.toolkit.config.get('ckanext.xloader.use_designated_queues')):
         custom_queue = res_id
@@ -280,6 +301,13 @@ def xloader_hook(context, data_dict):
                 'package': dataset_dict,
                 'create_datastore_views': True,
             })
+
+        # (canada fork only): non-qualified res_url for lang domain support
+        #                     only for upload types.
+        # TODO: upstream contrib!!
+        if resource_dict.get('url_type') == 'upload':
+            resource_dict = p.toolkit.get_action('resource_show')(
+                dict(context, for_index=True), {'id': res_id})
 
         # Check if the uploaded file has been modified in the meantime
         if (resource_dict.get('last_modified')

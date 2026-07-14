@@ -13,7 +13,7 @@ from . import action, auth, helpers as xloader_helpers, utils
 from ckanext.xloader.utils import XLoaderFormats
 
 # (canada fork only): capability to use designated queues per resource, queue_name
-#TODO: upstream contrib queue_name
+# TODO: upstream contrib queue_name
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 
 try:
@@ -99,7 +99,7 @@ class xloaderPlugin(plugins.SingletonPlugin):
         # (canada fork only): custom job name
         if _should_remove_unsupported_resource_from_datastore(resource_dict):
             # (canada fork only): capability to use designated queues per resource, queue_name
-            #TODO: upstream contrib queue_name
+            # TODO: upstream contrib queue_name
             queue = toolkit.config.get('ckanext.xloader.queue_name', DEFAULT_QUEUE_NAME)
             if toolkit.asbool(toolkit.config.get('ckanext.xloader.use_designated_queues')):
                 queue = entity.id

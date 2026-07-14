@@ -1,0 +1,1 @@
+Now only stores the relative URIs in the database for XLoader Resource fields `original_url` (only for Uploads). No longer stores the `ckan_url` value in the database.
