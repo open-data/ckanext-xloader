@@ -147,11 +147,9 @@ def xloader_submit(context, data_dict):
         original_url_parts = urlparse(original_url)
         if original_url_parts.netloc:
             original_url = original_url_parts._replace(scheme='', netloc='').geturl()
-            for _lang in config.get('ckan.locales_offered', ['en']):
-                if original_url.startswith(f'/{_lang}/'):
-                    while original_url.startswith(f'/{_lang}/'):
-                        original_url = original_url[len(f'/{_lang}'):]
-                    break
+        for _lang in config.get('ckan.locales_offered', ['en']):
+            while original_url.startswith(f'/{_lang}/'):
+                original_url = original_url[len(f'/{_lang}'):]
 
     data = {
         'job_type': 'xloader_to_datastore',

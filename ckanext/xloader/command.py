@@ -134,11 +134,9 @@ class XloaderCmd:
                 original_url_parts = urlparse(original_url)
                 if original_url_parts.netloc:
                     original_url = original_url_parts._replace(scheme='', netloc='').geturl()
-                    for _lang in tk.config.get('ckan.locales_offered', ['en']):
-                        if original_url.startswith(f'/{_lang}/'):
-                            while original_url.startswith(f'/{_lang}/'):
-                                original_url = original_url[len(f'/{_lang}'):]
-                            break
+                for _lang in tk.config.get('ckan.locales_offered', ['en']):
+                    while original_url.startswith(f'/{_lang}/'):
+                        original_url = original_url[len(f'/{_lang}'):]
             # (canada fork only): fix TypeErrors
             # TODO: upstream contrib??
             job_dict = {
